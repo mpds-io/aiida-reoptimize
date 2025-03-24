@@ -1,0 +1,21 @@
+[project]
+name = "aiida-reoptimize"
+version = "0.1.0"
+description = "Calculators for external optimization of crystal structures."
+authors = [
+    {name = "Anton Domnin",email = "a.v.daomnin@gmail.com"}
+]
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.6.9"
