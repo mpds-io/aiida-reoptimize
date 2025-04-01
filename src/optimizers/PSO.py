@@ -1,10 +1,9 @@
 from aiida.engine import WorkChain
-from abc import ABC, abstractmethod
 from aiida.orm import Float, List, Int, Str
 import numpy as np
 
 
-class PSOWorkChain(WorkChain, ABC):
+class PSOWorkChain(WorkChain):
     """
     Particle Swarm Optimization WorkChain for AiiDA workflows.
     
@@ -78,7 +77,6 @@ class PSOWorkChain(WorkChain, ABC):
         self.ctx.global_best_value = np.inf
         self.ctx.global_best_position = self.ctx.positions[0].tolist()
 
-    @abstractmethod
     def evaluate(self):
         """
         Abstract method for particle evaluations (must be implemented).
@@ -86,7 +84,7 @@ class PSOWorkChain(WorkChain, ABC):
         Should create sub-processes for each particle and store them in:
         self.ctx[f'eval_{i}'] for i in range(num_particles)
         """
-        pass
+        raise NotImplementedError("Subclasses must implement evaluate()")
 
     def collect_results(self):
         """
