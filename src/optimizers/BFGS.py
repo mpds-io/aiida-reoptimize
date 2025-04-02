@@ -167,7 +167,7 @@ class BFGSWorkChain(WorkChain):
         Saves optimized parameters and final function value.
         Handles cases where final evaluation failed.
         """
-        self.out('optimized_parameters', List(list=self.ctx.parameters.tolist()))
+        self.out('optimized_parameters', List(list=self.ctx.parameters.tolist()).store())
 
         if hasattr(self.ctx, 'results') and len(self.ctx.results) > 0:
             self.out('final_value', Float(self.ctx.results[0]).store())
