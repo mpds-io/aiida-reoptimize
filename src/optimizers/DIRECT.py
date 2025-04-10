@@ -14,7 +14,7 @@ class DIRECTWorkChain(WorkChain):
         spec.input('upper_bounds', valid_type=List)
         spec.input('key_value', valid_type=Str, default=lambda: Str('energy'))
         spec.input('max_iterations', valid_type=Int, default=lambda: Int(100))
-        spec.input('epsilon', valid_type=Float, default=lambda: Float(1e-8))
+        spec.input('epsilon', valid_type=Float, default=lambda: Float(1e-4))
         spec.input('penalty', valid_type=Float, default=lambda: Float(1e8))
 
         spec.outline(
@@ -64,58 +64,55 @@ class DIRECTWorkChain(WorkChain):
 
     def select_potentially_optimal(self):
         key = self.inputs.key_value.value
-        """Выбор потенциально оптимальных гиперпрямоугольников [[3]]"""
-        # Сортировка по значению функции
-        sorted_rects = sorted(self.ctx.rectangles, 
-                            key=lambda x: x.get_array(key))
-        
+        sorted_rects = sorted(self.ctx.rectangles, key=lambda x: x.get_array(key))
         po_rects = []
-        for i, rect_i in enumerate(sorted_rects):
-            is_optimal = True
-            for j, rect_j in enumerate(sorted_rects):
-                if i == j:
-                    continue
-                if rect_i.get_array(key) > rect_j.get_array(key) - 1e-8*abs(rect_j.get_array(key)):
-                    is_optimal = False
-                    break
-            if is_optimal:
-                po_rects.append(rect_i)
+        min_f = sorted_rects[0].get_array(key)[0]
+        
+        # Select all rectangles with f <= min_f + ε*|min_f|
+        candidates = [r for r in sorted_rects 
+                    if r.get_array(key)[0] <= min_f + 1e-8 * abs(min_f)]
+        
+        # Select largest rectangles among candidates
+        max_size = max([np.max(r.get_array('upper') - r.get_array('lower')) 
+                    for r in candidates])
+        po_rects = [r for r in candidates 
+                if np.max(r.get_array('upper') - r.get_array('lower')) >= max_size - 1e-12]
         
         self.ctx.current_rectangles = po_rects
 
 
     def divide_rectangles(self):
-        """Деление выбранных гиперпрямоугольников"""
         new_rects = []
         for rect in self.ctx.current_rectangles:
             lower = rect.get_array('lower')
             upper = rect.get_array('upper')
             dim = np.argmax(upper - lower)
             delta = (upper[dim] - lower[dim])/3
-            c = (lower[dim] + upper[dim])/2
+            c = lower[dim] + delta  # First third
             
-            # Создаем 3 новых гиперпрямоугольника
+            # Create 3 new hyperrectangles
             for part in range(3):
                 new_lower = lower.copy()
                 new_upper = upper.copy()
                 
                 if part == 0:
-                    new_upper[dim] = c
+                    new_upper[dim] = c  # Left third
                 elif part == 1:
                     new_lower[dim] = c
-                    new_upper[dim] = c + delta
+                    new_upper[dim] = c + delta  # Middle third
                 else:
-                    new_lower[dim] = c - delta
-                    new_upper[dim] = c
+                    new_lower[dim] = c + delta
+                    new_upper[dim] = upper[dim]  # Right third
                 
                 new_rect = ArrayData()
                 new_rect.set_array('lower', new_lower)
                 new_rect.set_array('upper', new_upper)
                 new_rect.set_array('center', (new_lower + new_upper)/2)
+                new_rect.set_array(self.inputs.key_value.value, np.array([self.inputs.penalty.value]))
                 new_rects.append(new_rect)
-        
-        self.ctx.new_rectangles = new_rects # list of ArrayData
-        self.ctx.targets = [i.get_array('center') for i in new_rects] # чтобы не нужно было переделывать проблемы
+            
+        self.ctx.new_rectangles = new_rects
+        self.ctx.targets = [r.get_array('center') for r in new_rects]
         self.report(f"Iteration {self.ctx.iteration}: new rectangles = {self.ctx.targets}")
 
     def evaluate(self):
