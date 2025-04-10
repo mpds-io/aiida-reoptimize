@@ -14,7 +14,7 @@ class DIRECTWorkChain(WorkChain):
         spec.input('upper_bounds', valid_type=List)
         spec.input('key_value', valid_type=Str, default=lambda: Str('energy'))
         spec.input('max_iterations', valid_type=Int, default=lambda: Int(100))
-        spec.input('epsilon', valid_type=Float, default=lambda: Float(1e-4))
+        spec.input('epsilon', valid_type=Float, default=lambda: Float(1e-1))
         spec.input('penalty', valid_type=Float, default=lambda: Float(1e8))
 
         spec.outline(
@@ -42,7 +42,8 @@ class DIRECTWorkChain(WorkChain):
         self.ctx.iteration = 0
         self.ctx.best_value = self.inputs.penalty.value + 1
         self.ctx.best_solution = np.zeros(self.ctx.dim)
-        
+        self.ctx.should_continue = True
+
         # Начальный гиперпрямоугольник
         initial_rect = ArrayData()
         lower_bounds = np.array(self.inputs.lower_bounds)
@@ -54,13 +55,14 @@ class DIRECTWorkChain(WorkChain):
         initial_rect.set_array(self.inputs.key_value.value, np.array([self.inputs.penalty.value]*self.ctx.dim))
         self.ctx.rectangles = [initial_rect]
 
+    # TODO Change convergence criteria that based on Delta, not on epsilon
     def continue_condition(self):
         """Условие продолжения итераций"""
         return (
             self.ctx.iteration < self.inputs.max_iterations and
             np.max([np.max(r.get_array('upper') - r.get_array('lower')) 
                     for r in self.ctx.rectangles]) > self.inputs.epsilon
-        )
+    )
 
     def select_potentially_optimal(self):
         key = self.inputs.key_value.value
@@ -70,7 +72,7 @@ class DIRECTWorkChain(WorkChain):
         
         # Select all rectangles with f <= min_f + ε*|min_f|
         candidates = [r for r in sorted_rects 
-                    if r.get_array(key)[0] <= min_f + 1e-8 * abs(min_f)]
+                    if r.get_array(key)[0] <= min_f + self.inputs.epsilon.value * abs(min_f)]
         
         # Select largest rectangles among candidates
         max_size = max([np.max(r.get_array('upper') - r.get_array('lower')) 
@@ -148,9 +150,10 @@ class DIRECTWorkChain(WorkChain):
         for rect in self.ctx.new_rectangles:
             value = rect.get_array(self.inputs.key_value.value)[0]
             if value < self.ctx.best_value:
+                self.previous_best_value = self.ctx.best_value
                 self.ctx.best_value = value
                 self.ctx.best_solution = rect.get_array('center')
-        
+
         # Обновляем список гиперпрямоугольников
         self.ctx.rectangles = [
             r for r in self.ctx.rectangles if r not in self.ctx.current_rectangles
