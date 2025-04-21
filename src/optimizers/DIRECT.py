@@ -78,13 +78,12 @@ class DIRECTWorkChain(WorkChain):
         spec.output("optimized_parameters", valid_type=List)
 
     def initialize(self):
-        """Инициализация начальных параметров"""
         self.ctx.dimensions = self.inputs.dimensions.value
         self.ctx.bounds = np.array(self.inputs.bounds.get_list())
 
         self.ctx.iteration = 0
         self.ctx.best_value = self.inputs.penalty.value + 1
-        self.ctx.best_solution = np.zeros(self.ctx.dim)
+        self.ctx.best_solution = np.zeros(self.ctx.dimensions)
         self.ctx.should_continue = True
 
         # Inital heperrectangle
@@ -98,7 +97,7 @@ class DIRECTWorkChain(WorkChain):
         initial_rect.set_array("center", (lower_bounds + upper_bounds) / 2)
         initial_rect.set_array(
             self.inputs.key_value.value,
-            np.array([self.inputs.penalty.value] * self.ctx.dim),
+            np.array([self.inputs.penalty.value] * self.ctx.dimensions),
         )
         self.ctx.rectangles = [initial_rect]
 
@@ -236,7 +235,6 @@ class DIRECTWorkChain(WorkChain):
         )
 
     def finalize(self):
-        """Финальные действия"""
         self.out("final_value", Float(self.ctx.best_value).store())
         self.out(
             "optimized_parameters",
