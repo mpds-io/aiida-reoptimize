@@ -1,6 +1,6 @@
-from aiida.engine import WorkChain
-from aiida.orm import Float, List, Int, Str
 import numpy as np
+from aiida.engine import WorkChain
+from aiida.orm import Float, Int, List, Str
 
 
 class PSOWorkChain(WorkChain):
@@ -9,13 +9,7 @@ class PSOWorkChain(WorkChain):
     
     Implements PSO algorithm using AiiDA's workflow engine for provenance tracking.
     Requires implementation of problem-specific `evaluate()` method.
-    
-    Key features:
-    - Automatic parameter handling
-    - Parallel particle evaluation
-    - Boundary constraint enforcement
-    - Penalty-based error handling
-    """
+    """  # noqa: E501
     
     @classmethod
     def define(cls, spec):
@@ -91,7 +85,7 @@ class PSOWorkChain(WorkChain):
         Gather evaluation results with error handling.
         
         Applies penalty values to failed calculations to maintain optimization flow.
-        """
+        """  # noqa: E501
         results = []
         for i in range(self.ctx.num_particles):
             process = self.ctx[f'eval_{i}']
@@ -122,7 +116,7 @@ class PSOWorkChain(WorkChain):
         current_best_value = self.ctx.personal_best_values[current_best_idx]
         if current_best_value < self.ctx.global_best_value:
             self.ctx.global_best_value = current_best_value
-            self.ctx.global_best_position = self.ctx.positions[current_best_idx].tolist()
+            self.ctx.global_best_position = self.ctx.positions[current_best_idx].tolist()  # noqa: E501
 
         # Velocity update equation
         r1, r2 = np.random.rand(), np.random.rand()

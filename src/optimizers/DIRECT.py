@@ -5,8 +5,8 @@ from aiida.orm import ArrayData, Float, Int, List, Str
 
 class DIRECTWorkChain(WorkChain):
     """
-    This WorkChain is designed to perform optimization using the DIRECT (DIviding RECTangles) algorithm. 
-    It divides the search space into hyperrectangles, evaluates the objective function, and iteratively 
+    This WorkChain is designed to perform optimization using the DIRECT (DIviding RECTangles) algorithm.
+    It divides the search space into hyperrectangles, evaluates the objective function, and iteratively
     refines the search space to find the optimal solution.
 
     Attributes:
@@ -20,7 +20,7 @@ class DIRECTWorkChain(WorkChain):
     Outputs:
         final_value (Float): The best value of the objective function found during optimization.
         optimized_parameters (List): The parameters corresponding to the best value.
-    """
+    """  # noqa: E501
 
     @classmethod
     def define(cls, spec):
