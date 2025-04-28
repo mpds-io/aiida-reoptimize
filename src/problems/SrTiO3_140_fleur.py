@@ -36,26 +36,32 @@ class ObjectiveFunctionWorkChain(WorkChain):
             help="Total energy from DFT calculation",
         )
 
-    def find_nodes(self):
+    def find_nodes(self, fleur_node_label, inpgen_node_label):
         qb = QueryBuilder()
-        qb.append(Code, filters={"label": {"in": ["fleur", "inpgen"]}})
+        qb.append(Code, filters={"label": {"in": [fleur_node_label, inpgen_node_label]}})  # noqa: E501
         nodes = qb.all()
-
+        
+        if not nodes:
+            raise ValueError("No Fleur or inpgen codes found in the database")
+        
         data = {}
         for node in nodes:
             data[node[0].label] = node[0].pk
         return data
 
     def run_fleur_relax(self):
-        """
-        Set up and execute FleurRelaxWorkChain for structural optimization.
-        """
-        # Load pre-configured code nodes
-        nodes = self.find_nodes()
-        FLEUR_PK = nodes["fleur"]  # FLEUR code persistent identifier
-        INPGEN_PK = nodes["inpgen"]  # inpgen code persistent identifier
-        fleur_code = load_node(FLEUR_PK)
-        inpgen_code = load_node(INPGEN_PK)
+        fleur_node_label, inpgen_node_label = "fleur", "inpgen"
+        nodes = self.find_nodes(fleur_node_label, inpgen_node_label)
+        required_codes = [fleur_node_label, inpgen_node_label]
+        for code_label in required_codes:
+            if code_label not in nodes:
+                raise KeyError(f"Missing required code: {code_label}")
+            
+            try:
+                fleur_code = load_node(nodes[fleur_node_label])
+                inpgen_code = load_node(nodes[inpgen_node_label])
+            except NotExistent as e:
+                raise RuntimeError(f"Failed to load code node: {e}") from e
 
         # Extract unit cell parameters
         a = self.inputs.x.get_list()[0]
