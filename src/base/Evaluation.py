@@ -1,7 +1,23 @@
 from typing import Type
 
 from aiida.engine import ToContext, WorkChain
-from aiida.orm import List, Str
+from aiida.orm import Dict, Float, Int, List, Str
+
+
+def wrap_if_needed(value, valid_type):
+    # If already correct type, return as is
+    if isinstance(value, valid_type):
+        return value
+    # Otherwise, wrap
+    if valid_type is Int:
+        return Int(value)
+    if valid_type is Float:
+        return Float(value)
+    if valid_type is List:
+        return List(list=value)
+    if valid_type is Dict:
+        return Dict(dict=value)
+    return value
 
 
 class EvalWorkChainProblem(WorkChain):
@@ -22,6 +38,8 @@ class EvalWorkChainProblem(WorkChain):
             valid_type=List,
             help="List of structural parameter sets to evaluate",
         )
+        # It only works if targets is a list of lists. 
+        # In other cases it crashes.
         spec.input(
             "output_keyword",
             valid_type=Str,
@@ -39,12 +57,17 @@ class EvalWorkChainProblem(WorkChain):
 
     def evaluate(self):
         target_values = {}
-        for i, pos in enumerate(self.inputs.targets):
-            future = self.submit(self.problem_workchain, x=Int(pos))
-            target_values[f"eval_{i}"] = future
-        return ToContext(
-            **target_values
-        )  # Wait for all pro   cesses to complete
+        # This madness appears to be needed to get the correct type
+        # for some reason if you pass List[Int] in aiida input it
+        # will be transformed into List[int] and, since your workchain
+        # x to be Int and not python int, it will crash
+        expected_type = self.problem_workchain.spec().inputs["x"].valid_type
+        self.report(f"Evaluating given targets: {self.inputs.targets}")
+        for idx, x in enumerate(self.inputs.targets):
+            x_wrapped = wrap_if_needed(x, expected_type)
+            future = self.submit(self.problem_workchain, x=x_wrapped)
+            target_values[f"eval_{idx}"] = future
+        return ToContext(**target_values)
 
     def result(self):
         results = []
@@ -57,12 +80,10 @@ class EvalWorkChainProblem(WorkChain):
 
 
 class EvalWorkChainStructureProblem(WorkChain):
+    problem_builder: Type[object]  # Placeholder for the generator type
 
-    problem_builder: Type[WorkChain]
-    generator: Type[object]  # Placeholder for the generator type
-
-    # This workchain designed specifically using it 
-    # with DynamicStructureWorkChainGenerator 
+    # This workchain designed specifically using it
+    # with DynamicStructureWorkChainGenerator
     # (Case when you need to modify complex object and not pass some numbers)
 
     @classmethod
@@ -91,10 +112,9 @@ class EvalWorkChainStructureProblem(WorkChain):
         For each x in targets, use the generator to get a builder and submit it.
         """  # noqa: E501
         target_values = {}
-        targets = self.inputs.targets.get_list()
-
-        for i, x in enumerate(targets):
-            builder = self.generator.get_builder(Int(x))
+        self.report(f"Evaluating given targets: {self.inputs.targets}")
+        for i, x in enumerate(self.inputs.targets):
+            builder = self.problem_builder.get_builder(x)
             future = self.submit(builder)
             target_values[f"eval_{i}"] = future
         return ToContext(**target_values)
@@ -132,6 +152,7 @@ if __name__ == "__main__":
     class DummyGenerator:
         def get_builder(self, x):
             builder = DummyProblemWorkChain.get_builder()
+            # You have to be sure that you send value of correct type
             builder.x = Int(x)
             return builder
 
@@ -139,17 +160,15 @@ if __name__ == "__main__":
     class UserEvalWorkChainProblem(EvalWorkChainProblem):
         problem_workchain = DummyProblemWorkChain
 
-    int_list = List([0, 1, 2, 3, 4])
+    int_list = List(list=[i for i in range(5)])  # Example list of x values
     result = run(UserEvalWorkChainProblem, targets=int_list)
     print(result["evaluation_results"])
     # Output: [0, 1, 4, 9, 16]
 
     # Run the EvalWorkChainStructureProblem with the DummyGenerator
     class UserEvalWorkChainStructureProblem(EvalWorkChainStructureProblem):
-        problem_builder = DummyProblemWorkChain
-        generator = DummyGenerator()
+        problem_builder = DummyGenerator()
 
-    int_list = List([9, 2, 3, 4, 7])
     result = run(UserEvalWorkChainStructureProblem, targets=int_list)
     print(result["evaluation_results"])
-    # Output: [81, 4, 9, 16, 49]
+    # Output: [0, 1, 4, 9, 16]
