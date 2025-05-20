@@ -1,29 +1,15 @@
 from typing import Type
 
 from aiida.engine import ToContext, WorkChain
-from aiida.orm import Dict, Float, Int, List, Str
-
-
-def wrap_if_needed(value, valid_type):
-    # If already correct type, return as is
-    if isinstance(value, valid_type):
-        return value
-    # Otherwise, wrap
-    if valid_type is Int:
-        return Int(value)
-    if valid_type is Float:
-        return Float(value)
-    if valid_type is List:
-        return List(list=value)
-    if valid_type is Dict:
-        return Dict(dict=value)
-    return value
+from aiida.orm import Int, List
 
 
 class EvalWorkChainProblem(WorkChain):
     """Base class for evaluating objective functions in optimization workflows."""  # noqa: E501
 
     problem_workchain: Type[WorkChain]
+    # Function that extrack target value from resulting nodes
+    extractor: Type[callable]  
 
     # Expect to recive a workchain to be optimized, this workchain recive new
     # parameters and returns the objective function value
@@ -32,6 +18,7 @@ class EvalWorkChainProblem(WorkChain):
     def define(cls, spec):
         """Specify inputs, outputs, and the workchain outline."""
         assert cls.problem_workchain is not None, "problem must be set"  # noqa: E501
+        assert cls.extractor is not None, "extractor must be set"
         super().define(spec)
         spec.input(
             "targets",
@@ -40,12 +27,6 @@ class EvalWorkChainProblem(WorkChain):
         )
         # It only works if targets is a list of lists. 
         # In other cases it crashes.
-        spec.input(
-            "output_keyword",
-            valid_type=Str,
-            default=lambda: Str("energy"),
-            help="Key for the target value",
-        )
 
         spec.outline(cls.evaluate, cls.result)
 
@@ -64,7 +45,7 @@ class EvalWorkChainProblem(WorkChain):
         expected_type = self.problem_workchain.spec().inputs["x"].valid_type
         self.report(f"Evaluating given targets: {self.inputs.targets}")
         for idx, x in enumerate(self.inputs.targets):
-            x_wrapped = wrap_if_needed(x, expected_type)
+            x_wrapped = expected_type(x)
             future = self.submit(self.problem_workchain, x=x_wrapped)
             target_values[f"eval_{idx}"] = future
         return ToContext(**target_values)
@@ -74,13 +55,15 @@ class EvalWorkChainProblem(WorkChain):
         for i in range(len(self.inputs.targets)):
             process = self.ctx[f"eval_{i}"]
             results.append(
-                process.outputs[self.inputs.output_keyword.value].value
+                extractor(process.outputs)
             )
         self.out("evaluation_results", List(list=results).store())
 
 
 class EvalWorkChainStructureProblem(WorkChain):
     problem_builder: Type[object]  # Placeholder for the generator type
+    # Function that extract target value from resulting nodes
+    extrctor: Type[callable]  
 
     # This workchain designed specifically using it
     # with DynamicStructureWorkChainGenerator
@@ -95,12 +78,7 @@ class EvalWorkChainStructureProblem(WorkChain):
             valid_type=List,
             help="List of structural parameter sets",
         )
-        spec.input(
-            "output_keyword",
-            valid_type=Str,
-            default=lambda: Str("energy"),
-            help="Key for the target value",
-        )
+
         spec.outline(
             cls.evaluate,
             cls.result,
@@ -124,7 +102,7 @@ class EvalWorkChainStructureProblem(WorkChain):
         for i in range(len(self.inputs.targets)):
             process = self.ctx[f"eval_{i}"]
             results.append(
-                process.outputs[self.inputs.output_keyword.value].value
+                extractor(process.outputs)
             )
         self.out("evaluation_results", List(list=results).store())
 
@@ -135,6 +113,9 @@ if __name__ == "__main__":
     from aiida.orm import Int
 
     aiida.load_profile()
+
+    def extractor(x):
+        return x['energy'].value
 
     class DummyProblemWorkChain(WorkChain):
         @classmethod
@@ -159,6 +140,7 @@ if __name__ == "__main__":
     # Run the EvalWorkChainProblem with the DummyProblemWorkChain
     class UserEvalWorkChainProblem(EvalWorkChainProblem):
         problem_workchain = DummyProblemWorkChain
+        extractor = extractor
 
     int_list = List(list=[i for i in range(5)])  # Example list of x values
     result = run(UserEvalWorkChainProblem, targets=int_list)
@@ -168,6 +150,7 @@ if __name__ == "__main__":
     # Run the EvalWorkChainStructureProblem with the DummyGenerator
     class UserEvalWorkChainStructureProblem(EvalWorkChainStructureProblem):
         problem_builder = DummyGenerator()
+        extrctor = extractor
 
     result = run(UserEvalWorkChainStructureProblem, targets=int_list)
     print(result["evaluation_results"])
