@@ -22,7 +22,7 @@ class DynamicStructure:
         return new_structure
 
 
-class DynamicStructureWorkChainGenerator:
+class DynamicStructureProblem:
     def __init__(
         self,
         structure: ase.atoms.Atoms,

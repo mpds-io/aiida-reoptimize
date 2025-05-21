@@ -12,7 +12,7 @@ from aiida_fleur.workflows.scf import FleurScfWorkChain
 from ase.build import bulk
 
 from src.base.Evaluation import EvalWorkChainStructureProblem
-from src.structure.dynamic_structure import DynamicStructureWorkChainGenerator
+from src.structure.dynamic_structure import StructureProblem
 
 aiida.load_profile()
 
@@ -21,7 +21,7 @@ aiida.load_profile()
 initial_structure = bulk("Au")
 
 # Define the generator for the Evaluator
-problem_builder = DynamicStructureWorkChainGenerator(
+problem_builder = StructureProblem(
     structure=initial_structure,
     calculator=FleurScfWorkChain,
     parameters={"inpgen": load_node(101745), "fleur": load_node(101746)},
