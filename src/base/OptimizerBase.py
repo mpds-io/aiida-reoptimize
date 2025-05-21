@@ -1,7 +1,7 @@
 from typing import Type
 
 from aiida.engine import WorkChain
-from aiida.orm import Dict, Float, Int, List, Str
+from aiida.orm import Dict, Float, Int, List
 
 
 class _OptimizerBase(WorkChain):
@@ -22,18 +22,12 @@ class _OptimizerBase(WorkChain):
             default=lambda: Int(100),
             help="Maximum number of iterations.",
         )
-        spec.input(
-            "key_value",
-            valid_type=Str,
-            default=lambda: Str("energy"),
-            help="Key for the target value.",
-        )
 
         spec.outline(cls.initialize, cls.optimization_process, cls.finalize)
 
         spec.output(
             "optimized_parameters",
-            valid_type=Dict,
+            valid_type=List,
             required=True,
             help="Optimized parameters.",
         )
