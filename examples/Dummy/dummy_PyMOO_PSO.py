@@ -22,11 +22,11 @@ class ExamplePyMOO(PyMOO_Optimizer):
 parameters = Dict({
     'dimensions': 3,
     'bounds': [[-1.0, 3.0], [-5.0, 4.0], [-2.0, 1.0]],
-    'algorithm_settings': {"pop_size": 10, "c1": 2.0, "c2": 2.0, "w": 0.5},
+    'algorithm_settings': {"pop_size": 2, "c1": 2.0, "c2": 2.0, "w": 0.5},
 })
 
 __parameters = Dict(dict={
-    'itmax': Int(25),
+    'itmax': Int(2),
     'parameters': parameters,
     'algorithm_name': Str('PSO'),
 })

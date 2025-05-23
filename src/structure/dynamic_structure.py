@@ -22,7 +22,7 @@ class DynamicStructure:
         return new_structure
 
 
-class StructureCalclulator:
+class StructureCalculator:
     def __init__(
         self,
         structure: ase.atoms.Atoms,

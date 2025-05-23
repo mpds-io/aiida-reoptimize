@@ -4,20 +4,13 @@ from aiida.engine import ToContext, WorkChain
 from aiida.orm import Int, List
 
 
-class EvalWorkChainProblem(WorkChain):
-    """Base class for evaluating objective functions in optimization workflows."""  # noqa: E501
-
-    problem_workchain: Type[WorkChain]
+class __EvalBaseWorkChain(WorkChain):
     # Function that extrack target value from resulting nodes
     extractor: Type[callable]
-
-    # Expect to recive a workchain to be optimized, this workchain recive new
-    # parameters and returns the objective function value
 
     @classmethod
     def define(cls, spec):
         """Specify inputs, outputs, and the workchain outline."""
-        assert cls.problem_workchain is not None, "problem must be set"  # noqa: E501
         assert cls.extractor is not None, "extractor must be set"
         super().define(spec)
         spec.input(
@@ -27,6 +20,12 @@ class EvalWorkChainProblem(WorkChain):
         )
         # It only works if targets is a list of lists.
         # In other cases it crashes.
+        spec.input(
+            "penalty",
+            valid_type=Int,
+            default=lambda: Int(1e10),
+            help="Penalty value for failed calculations",
+        )
 
         spec.outline(cls.evaluate, cls.result)
 
@@ -35,6 +34,35 @@ class EvalWorkChainProblem(WorkChain):
             valid_type=List,
             help="List of evaluation results for each target",
         )
+
+    def evaluate(self):
+        """
+        Abstract method for particle evaluations (must be implemented).
+        """
+        raise NotImplementedError("Subclasses must implement evaluate()")
+
+    def result(self):
+        results = []
+        for i in range(len(self.inputs.targets)):
+            process = self.ctx[f"eval_{i}"]
+            if process.is_finished_ok:
+                res = self.extractor(process.outputs)
+            else:
+                res = self.inputs.penalty.value  # Apply penalty for failures
+            results.append(res)
+        self.out("evaluation_results", List(list=results).store())
+
+
+class EvalWorkChainProblem(__EvalBaseWorkChain):
+    """Base class for evaluating objective functions in optimization workflows."""  # noqa: E501
+    # Expect to recive a workchain to be optimized, this workchain recive new
+    # parameters and returns the objective function value
+    problem_workchain: Type[WorkChain]
+
+    @classmethod
+    def define(cls, spec):
+        assert cls.problem_workchain is not None, "problem must be set"  # noqa: E501
+        super().define(spec)
 
     def evaluate(self):
         target_values = {}
@@ -50,38 +78,18 @@ class EvalWorkChainProblem(WorkChain):
             target_values[f"eval_{idx}"] = future
         return ToContext(**target_values)
 
-    def result(self):
-        results = []
-        for i in range(len(self.inputs.targets)):
-            process = self.ctx[f"eval_{i}"]
-            results.append(self.extractor(process.outputs))
-        self.out("evaluation_results", List(list=results).store())
 
-
-class EvalWorkChainStructureProblem(WorkChain):
-    problem_builder: Type[object]  # Placeholder for the generator type
-    # Function that extract target value from resulting nodes
-    extrctor: Type[callable]
+class EvalWorkChainStructureProblem(__EvalBaseWorkChain):
 
     # This workchain designed specifically using it
     # with DynamicStructureWorkChainGenerator
     # (Case when you need to modify complex object and not pass some numbers)
+    problem_builder: Type[object]
 
     @classmethod
     def define(cls, spec):
-        assert cls.problem_builder is not None, "problem_builder must be set"  # noqa: E501
+        assert cls.problem_builder is not None, "problem must be set"  # noqa: E501
         super().define(spec)
-        spec.input(
-            "targets",
-            valid_type=List,
-            help="List of structural parameter sets",
-        )
-
-        spec.outline(
-            cls.evaluate,
-            cls.result,
-        )
-        spec.output("evaluation_results", valid_type=List)
 
     def evaluate(self):
         """
@@ -94,13 +102,6 @@ class EvalWorkChainStructureProblem(WorkChain):
             future = self.submit(builder)
             target_values[f"eval_{i}"] = future
         return ToContext(**target_values)
-
-    def result(self):
-        results = []
-        for i in range(len(self.inputs.targets)):
-            process = self.ctx[f"eval_{i}"]
-            results.append(self.extractor(process.outputs))
-        self.out("evaluation_results", List(list=results).store())
 
 
 if __name__ == "__main__":
