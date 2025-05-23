@@ -1,7 +1,3 @@
-import sys
-
-sys.path.append("/root/code/aiida-reoptimize")
-
 import aiida
 from aiida.engine import run
 from aiida.orm import (
