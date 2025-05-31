@@ -7,8 +7,8 @@ from aiida.orm import (
 from aiida_fleur.workflows.scf import FleurScfWorkChain
 from ase.build import bulk
 
-from src.base.Evaluation import EvalWorkChainStructureProblem
-from src.structure.dynamic_structure import StructureCalculator
+from aiida_reoptimize.base.Evaluation import EvalWorkChainStructureProblem
+from aiida_reoptimize.structure.dynamic_structure import StructureCalculator
 
 aiida.load_profile()
 

@@ -2,9 +2,9 @@ from aiida import load_profile
 from aiida.engine import run
 from aiida.orm import Dict, Int, Str
 
-from src.base.Evaluation import EvalWorkChainProblem
-from src.optimizers.PyMOO.PyMOO import PyMOO_Optimizer
-from src.problems.problems import Sphere
+from aiida_reoptimize.base.Evaluation import EvalWorkChainProblem
+from aiida_reoptimize.optimizers.PyMOO.PyMOO import PyMOO_Optimizer
+from aiida_reoptimize.problems.problems import Sphere
 
 load_profile()
 

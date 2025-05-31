@@ -7,8 +7,8 @@ from pymoo.core.evaluator import Evaluator
 from pymoo.core.problem import Problem
 from pymoo.problems.static import StaticProblem
 
-from src.base.OptimizerBase import _OptimizerBase
-from src.optimizers.PyMOO.Builder import AlgorithmBuilder
+from aiida_reoptimize.base.OptimizerBase import _OptimizerBase
+from aiida_reoptimize.optimizers.PyMOO.Builder import AlgorithmBuilder
 
 
 class _PyMOO_Base(_OptimizerBase):
@@ -23,7 +23,8 @@ class _PyMOO_Base(_OptimizerBase):
         spec.input(
             "parameters",
             valid_type=Dict,
-            help="Optimization parameters including dimensions, bounds, and algorithm settings.",
+            help="Optimization parameters including dimensions, \
+                bounds, and algorithm settings.",
         )
         spec.input(
             "itmax", valid_type=Int, help="Maximum number of iterations."
