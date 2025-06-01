@@ -3,7 +3,7 @@ from aiida.engine import run
 from aiida.orm import Dict, Int, List
 
 from aiida_reoptimize.base.Evaluation import EvalWorkChainProblem
-from aiida_reoptimize.optimizers.convex.GD import AdamOptimizer
+from aiida_reoptimize.optimizers.convex.QN import BFGSOptimizer
 from aiida_reoptimize.problems.problems import Sphere
 
 load_profile()
@@ -15,12 +15,12 @@ class UserEvaluator(EvalWorkChainProblem):
     extractor = staticmethod(lambda x: x["value"].value)
 
 
-class ExampleAdam(AdamOptimizer):
+class ExampleBFGS(BFGSOptimizer):
     evaluator_workchain = UserEvaluator
 
 
 parameters = Dict({
-    "algorithm_settings": {"learning_rate": 0.01},
+    "algorithm_settings": {},
     "initial_parameters": List([0.1, -0.1, -0.2]),
 })
 
@@ -30,7 +30,7 @@ __parameters = Dict(dict={
 })
 
 results = run(
-    ExampleAdam,
+    ExampleBFGS,
     **__parameters,
 )
 
