@@ -7,7 +7,7 @@ from pymoo.core.evaluator import Evaluator
 from pymoo.core.problem import Problem
 from pymoo.problems.static import StaticProblem
 
-from aiida_reoptimize.base.OptimizerBase import _OptimizerBase
+from aiida_reoptimize.optimizers.OptimizerBase import _OptimizerBase
 from aiida_reoptimize.optimizers.PyMOO.Builder import AlgorithmBuilder
 
 
