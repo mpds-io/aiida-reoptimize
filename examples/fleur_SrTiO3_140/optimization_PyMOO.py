@@ -1,4 +1,5 @@
 import aiida
+from aiida.common.exceptions import NotExistent
 from aiida.engine import run
 from aiida.orm import (
     Dict,
@@ -9,9 +10,10 @@ from aiida.orm import (
 from aiida_fleur.workflows.scf import FleurScfWorkChain
 from ase import Atoms
 
-from src.base.Evaluation import EvalWorkChainStructureProblem
-from src.optimizers.PyMOO.PyMOO import PyMOO_Optimizer
-from src.structure.dynamic_structure import StructureCalculator
+from aiida_reoptimize.base.Evaluation import EvalWorkChainStructureProblem
+from aiida_reoptimize.base.utils import find_nodes
+from aiida_reoptimize.optimizers.PyMOO.PyMOO import PyMOO_Optimizer
+from aiida_reoptimize.structure.dynamic_structure import StructureCalculator
 
 aiida.load_profile()
 
@@ -47,11 +49,26 @@ initial_structure = Atoms(
     pbc=True,
 )
 
+# Find the required nodes for Fleur and inpgen
+fleur_node_label, inpgen_node_label = "fleur", "inpgen"
+nodes = find_nodes(fleur_node_label, inpgen_node_label)
+required_codes = [fleur_node_label, inpgen_node_label]
+
+for code_label in required_codes:
+    if code_label not in nodes:
+        raise KeyError(f"Missing required code: {code_label}")
+    
+    try:
+        fleur_code = load_node(nodes[fleur_node_label])
+        inpgen_code = load_node(nodes[inpgen_node_label])
+    except NotExistent as e:
+        raise RuntimeError(f"Failed to load code node: {e}") from e
+
 # Define the generator for the Evaluator
 problem_builder = StructureCalculator(
     structure=initial_structure,
     calculator=FleurScfWorkChain,
-    parameters={"inpgen": load_node(101745), "fleur": load_node(101746)},
+    parameters={"inpgen": inpgen_code, "fleur": fleur_code},
     structure_keyword="structure",
 )
 

@@ -1,9 +1,9 @@
 from aiida import load_profile
 from aiida.engine import run
-from aiida.orm import Dict, Int, Str
+from aiida.orm import Dict, Int, List
 
 from aiida_reoptimize.base.Evaluation import EvalWorkChainProblem
-from aiida_reoptimize.optimizers.PyMOO.PyMOO import PyMOO_Optimizer
+from aiida_reoptimize.optimizers.convex.GD import AdamOptimizer
 from aiida_reoptimize.problems.problems import Sphere
 
 load_profile()
@@ -15,24 +15,22 @@ class UserEvaluator(EvalWorkChainProblem):
     extractor = staticmethod(lambda x: x["value"].value)
 
 
-class ExamplePyMOO(PyMOO_Optimizer):
+class ExampleAdam(AdamOptimizer):
     evaluator_workchain = UserEvaluator
 
 
 parameters = Dict({
-    'dimensions': 3,
-    'bounds': [[-1.0, 3.0], [-5.0, 4.0], [-2.0, 1.0]],
-    'algorithm_settings': {"pop_size": 2, "c1": 2.0, "c2": 2.0, "w": 0.5},
+    "algorithm_settings": {"learning_rate": 0.01},
+    "initial_parameters": List([0.1, -0.1, -0.2]),
 })
 
 __parameters = Dict(dict={
-    'itmax': Int(2),
-    'parameters': parameters,
-    'algorithm_name': Str('PSO'),
+    "itmax": Int(20),
+    "parameters": parameters,
 })
 
 results = run(
-    ExamplePyMOO,
+    ExampleAdam,
     **__parameters,
 )
 
