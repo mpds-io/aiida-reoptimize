@@ -45,7 +45,7 @@ atoms = crystal(
 builder = OptimizerBuilder.from_bulk(
     optimizer_workchain=BFGSOptimizer,
     calculator_workchain=FleurScfWorkChain,
-    extractor=lambda x: x["output_scf_wc_para"]["total_energy"].value,
+    extractor=lambda x: x["output_scf_wc_para"]["total_energy"],
     calculator_parameters={"inpgen": inpgen_code, "fleur": fleur_code},
     bulk=atoms,
 )
