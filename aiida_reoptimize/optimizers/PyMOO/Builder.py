@@ -71,7 +71,7 @@ class AlgorithmBuilder:
 
         "ES": ["pop_size", "n_offsprings", "rule", "phi", "gamma", "sampling"],
 
-        "GA": ["pop_size", "termination", "sampling", "selection",
+        "GA": ["pop_size", "sampling", "selection",
                "crossover", "mutation", "eliminate_duplicates",
                "n_offsprings"],
 

@@ -13,13 +13,16 @@ class __EvalBaseWorkChain(WorkChain):
         """Specify inputs, outputs, and the workchain outline."""
         assert cls.extractor is not None, "extractor must be set"
         super().define(spec)
+
+        # It only works if targets is a list of lists.
+        # In other cases it crashes.
         spec.input(
             "targets",
             valid_type=List,
             help="List of structural parameter sets to evaluate",
         )
-        # It only works if targets is a list of lists.
-        # In other cases it crashes.
+
+        # TODO make it optional (crash if bad results) 
         spec.input(
             "penalty",
             valid_type=Int,
@@ -42,6 +45,7 @@ class __EvalBaseWorkChain(WorkChain):
         raise NotImplementedError("Subclasses must implement evaluate()")
 
     def result(self):
+        # TODO make it return a list of PK of result nodes
         results = []
         for i in range(len(self.inputs.targets)):
             process = self.ctx[f"eval_{i}"]
