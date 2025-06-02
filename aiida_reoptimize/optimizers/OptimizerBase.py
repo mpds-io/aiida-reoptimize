@@ -1,7 +1,7 @@
 from typing import Type
 
 from aiida.engine import WorkChain
-from aiida.orm import Dict, Float, Int, List
+from aiida.orm import Bool, Dict, Float, Int, List
 
 
 class _OptimizerBase(WorkChain):
@@ -22,6 +22,12 @@ class _OptimizerBase(WorkChain):
             default=lambda: Int(100),
             help="Maximum number of iterations.",
         )
+        spec.input(
+            "get_best",
+            valid_type=Bool,
+            default=lambda: Bool(False),
+            help="Whether to return the best result node identifier.",
+        )
 
         spec.outline(cls.initialize, cls.optimization_process, cls.finalize)
 
@@ -37,6 +43,14 @@ class _OptimizerBase(WorkChain):
             required=True,
             help="Final value of the objective function.",
         )
+
+        spec.output(
+            "result_node_pk",
+            valid_type=Int,
+            required=False,
+            help="Primary key of the best result node.",
+        )
+        # TODO add exit codes
 
     def initialize(self):
         raise NotImplementedError("Subclasses must implement initialize()")
@@ -54,6 +68,11 @@ class _OptimizerBase(WorkChain):
             List(list=self.ctx.best_parameters.tolist()).store(),
         )
         self.out("final_value", Float(self.ctx.results[0]).store())
+
+        if self.inputs.get_best.value:
+            self.out(
+                "result_node_pk", Int(self.ctx.best_result_node_pk).store()
+            )
 
     def check_itmax(self):
         """Check if the optimization should continue."""

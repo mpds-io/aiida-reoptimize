@@ -45,7 +45,6 @@ class BFGSOptimizer(_GDBase):
         Backtracking line search to find step size along direction.
         Returns the found step size.
         """
-        # TODO make parameters adjustable from user input
         alpha = self.ctx.alpha
         beta = self.ctx.beta
         sigma = self.ctx.sigma
