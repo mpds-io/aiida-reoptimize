@@ -42,8 +42,10 @@ class BFGSOptimizer(_GDBase):
 
     def _line_search(self, direction):
         """
-        Backtracking line search to find step size along direction.
-        Returns the found step size.
+        Performs a backtracking line search to determine an appropriate step
+        size along the given search direction. The method iteratively reduces 
+        the step size (alpha) by a factor of beta until the Armijo condition 
+        is satisfied, ensuring sufficient decrease in the objective function.
         """
         alpha = self.ctx.alpha
         beta = self.ctx.beta
@@ -78,7 +80,7 @@ class BFGSOptimizer(_GDBase):
             s = self.ctx.parameters - self.ctx.parameters_prev
             y = gradient - self.ctx.gradient_prev
             ys = np.dot(y, s)
-            if ys > 1e-10:  # Avoid division by zero
+            if ys > self.ctx.epsilon:  # Avoid division by zero
                 I = np.eye(len(self.ctx.parameters))  # noqa: E741
                 rho = 1.0 / ys
                 V = I - rho * np.outer(s, y)

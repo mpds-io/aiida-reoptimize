@@ -1,5 +1,4 @@
 import numpy as np
-from aiida.orm import Float
 
 from .base import _GDBase
 
@@ -43,15 +42,6 @@ class RMSpropOptimizer(_GDBase):
 
 
 class AdamOptimizer(_GDBase):
-    @classmethod
-    def define(cls, spec):
-        super().define(spec)
-        # ! XXX Add information about parameters / test paramiters to find optimal  # noqa: E501
-        spec.input(
-            "learning_rate", valid_type=Float, default=lambda: Float(0.001)
-        )
-        spec.input("beta1", valid_type=Float, default=lambda: Float(0.9))
-        spec.input("beta2", valid_type=Float, default=lambda: Float(0.999))
 
     def initialize(self):
         super().initialize()

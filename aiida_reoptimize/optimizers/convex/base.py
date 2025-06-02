@@ -26,7 +26,7 @@ class _GDBase(_OptimizerBase):
             self.inputs["parameters"]
             .get("algorithm_settings", {})
             .get("epsilon")
-            or 1e-8
+            or 1e-10
         )
         self.ctx.delta = (
             self.inputs["parameters"]
