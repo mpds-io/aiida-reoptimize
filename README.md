@@ -49,7 +49,7 @@ These optimizers are implemented as AiiDA WorkChains:
 
 All implemented algorithms accept a common parameters:
 - `itmax` (Int): maximal number of iterations (default: `100`)
-- `parameters` (Dict): Dictionary that contains algorihtms specific settings (in `algorithm_settings` (`Dict`), and additional parameters required for optmization)
+- `parameters` (Dict): Dictionary that contains algorithms specific settings (in `algorithm_settings` (`Dict`), and additional parameters required for optimization)
 
 ### Convex algorithms
 
@@ -60,7 +60,7 @@ All convex optimizers accept the following parameters (passed as a `Dict` under 
 | `algorithm_settings`  | Dict    | Algorithm-specific settings (see below)                  |
 | `initial_parameters`  | List    | Initial guess for the parameters to optimize             |
 
-**Gradient decent based algorithms** (inside `algorithm_settings`):
+**Gradient descent based algorithms** (inside `algorithm_settings`):
 - `tolerance` (float): Convergence threshold for gradient norm (default: `1e-3`)
 - `epsilon` (float): Small value to avoid division by zero (default: `1e-10`)
 - `delta` (float): Step size for numerical gradient (default: `1e-6`)
@@ -75,7 +75,7 @@ All convex optimizers accept the following parameters (passed as a `Dict` under 
 
 
 **BFGS-specific settings** (inside `algorithm_settings`):
-- `alpha` (float): Initial step size for line search procedure (default: `1.0`).
+- `alpha` (float): Initial step size for the line search procedure, which influences the starting magnitude of parameter updates. A larger value may speed up convergence but risks overshooting, while a smaller value ensures stability at the cost of slower progress (default: `1.0`).
 - `beta` (float): Step size reduction factor (default: `0.5`)
 - `sigma` (float): Armijo/sufficient decrease parameter. This controls how much decrease in the objective function is considered "sufficient." (default: `1e-4`)
 - `linesearch_max_iter` (int): Maximum allowed steps in line search procedure (default: `20`)
@@ -118,7 +118,7 @@ parameters = Dict({
     "algorithm_name": "GA",
     "algorithm_settings": {
         "pop_size": 50,
-        "sampling": "LHS",         # Use "LHS" instead of LHS()
+        "sampling": "LHS",         # Use "LHS" (Latin Hypercube Sampling) instead of LHS()
         "crossover": "SBX",        # Use "SBX" instead of SBX()
         "mutation": "PM",          # Use "PM" instead of PolynomialMutation()
         "selection": "TOS"         # Use "TOS" instead of TournamentSelection()
