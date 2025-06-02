@@ -35,7 +35,7 @@
 ---
 ## Algorithms
 
-Currently, two types of algorithms are implemented...
+Currently, two types of algorithms are implemented.
 
 ### Gradient-based optimizers
 
@@ -49,7 +49,7 @@ These optimizers are implemented as AiiDA WorkChains:
 
 All implemented algorithms accept a common parameters:
 - `itmax` (Int): maximal number of iterations (default: `100`)
-- `parameters` (Dict): Dictionary that contains algorithms specific settings (in `algorithm_settings` (`Dict`), and additional parameters required for optimization)
+- `parameters` (Dict): Dictionary that contains algorithms specific settings (in `algorithm_settings`, `Dict`) and additional parameters required for optimization
 
 ### Convex algorithms
 
@@ -189,8 +189,8 @@ For detailed examples of structure optimization workflows, refer to the [example
 ## References
 
 - [pymoo: Multi-objective Optimization in Python](https://pymoo.org)
-- [AiiDA: Automated Interactive Infrastructure and Database for Computational Science](https://www.aiida.net/)
-- [Similar work by Dominik Greschm](https://github.com/greschd/aiida-optimize)
+- [AiiDA: Automated Interactive Infrastructure and Database for Computational Science](https://www.aiida.net)
+- [Similar work by Dominik Gresch](https://github.com/greschd/aiida-optimize)
 
 ---
 
