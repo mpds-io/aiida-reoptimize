@@ -77,8 +77,8 @@ class OptimizerBuilder:
 
         return UserEvaluator
 
+    @staticmethod
     def _get_structure_problem_builder(
-        self,
         bulk: ase.Atoms,
         calculator_workchain: Type[WorkChain],
         structure_keyword: str,
