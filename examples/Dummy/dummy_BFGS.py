@@ -35,5 +35,7 @@ results = run(
 )
 
 print("Optimization Results:")
-print(f"Best position: {results['optimized_parameters']}")
-print(f"Best value: {results['final_value']}")
+if results:
+    print(f"Best position: {results['optimized_parameters']}")
+    print(f"Best value: {results['final_value']}")
+    print(f"History: {results['history']}")
