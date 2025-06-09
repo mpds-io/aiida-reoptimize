@@ -73,6 +73,13 @@ class BFGSOptimizer(_GDBase):
 
     def update_parameters(self, gradient: np.array):
         """Update parameters using BFGS direction and step size."""
+
+        self.record_history(
+            parameters=self.ctx.parameters,
+            gradient=gradient,
+            value=self.ctx.results[0],
+        )
+
         if self.ctx.iteration == 1:
             # First iteration, no previous gradient/parameters
             direction = -np.dot(self.ctx.inv_hessian, gradient)
