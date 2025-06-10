@@ -9,6 +9,7 @@ from aiida_reoptimize.base.Evaluation import (
 )
 
 from ..structure.dynamic_structure import StructureCalculator
+from ..structure.MPDS_structure import get_geometry_MPDS
 
 
 class OptimizerBuilder:
@@ -94,6 +95,25 @@ class OptimizerBuilder:
             structure_keyword=structure_keyword,
         )
 
+    @staticmethod
+    def _process_MPDS_query(mpds_query: str) -> ase.Atoms:
+        """
+        Process the MPDS query to get the structure.
+        This function should be implemented to fetch the structure from MPDS.
+        It excepts query like 'Formula/space_group_number'
+        for example 'WS2/194'.
+        """
+
+        phase = mpds_query.split("/")
+        if len(phase) != 2:
+            raise ValueError(
+                "MPDS query should be in the format 'Formula/space_group_number'."  # noqa: E501
+            )
+
+        formula, sgs = phase
+        sgs = int(sgs)
+        return get_geometry_MPDS({"formulae": formula, "sgs": sgs})
+
     @classmethod
     def from_problem(
         cls,
@@ -132,6 +152,39 @@ class OptimizerBuilder:
 
         problem_builder = cls._get_structure_problem_builder(
             bulk=bulk,
+            calculator_workchain=calculator_workchain,
+            structure_keyword=structure_keyword,
+            calculator_parameters=calculator_parameters,
+        )
+
+        evaluator_workchain = cls._make_bulk_evaluator(
+            problem_builder, extractor, evaluator=evaluator_base
+        )
+
+        return cls(
+            optimizer_workchain=optimizer_workchain,
+            evaluator_workchain=evaluator_workchain,
+        )
+
+    @classmethod
+    def from_MPDS(
+        cls,
+        optimizer_workchain: Type[WorkChain],
+        calculator_workchain: Type[WorkChain],
+        extractor: Callable,
+        calculator_parameters: Dict[str, Any],
+        mpds_query: str,
+        structure_keyword: str = "structure",
+        evaluator_base: Type[WorkChain] = EvalWorkChainStructureProblem,
+    ):
+        """
+        Build an optimizer for a structure/materials problem based on MPDS.
+        """
+
+        bulk = cls._process_MPDS_query(mpds_query)
+
+        problem_builder = cls._get_structure_problem_builder(
+            bulk=bulk,  # Bulk will be fetched from MPDS
             calculator_workchain=calculator_workchain,
             structure_keyword=structure_keyword,
             calculator_parameters=calculator_parameters,
