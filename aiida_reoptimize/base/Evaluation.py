@@ -102,6 +102,7 @@ if __name__ == "__main__":
 
     aiida.load_profile()
 
+    # Defining the basic extractor
     def result_extractor(results_list, output_key="energy", penalty=1e10):
         """
         Extracts results from a list of dicts with 'pk' and 'status'.
