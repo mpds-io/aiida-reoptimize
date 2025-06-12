@@ -41,6 +41,7 @@ builder = OptimizerBuilder.from_MPDS(
 )
 
 # Setup lattice parameters
+# TODO find a better way to get these parameters
 a = 5.511
 c = 7.796
 
