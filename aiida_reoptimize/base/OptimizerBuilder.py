@@ -17,15 +17,18 @@ class OptimizerBuilder:
         self,
         optimizer_workchain: Type[WorkChain],
         evaluator_workchain: Type[WorkChain],
+        extractor: Type[Callable]
     ):
         self.optimizer_workchain = optimizer_workchain
         self.evaluator_workchain = evaluator_workchain
+        self.extractor = extractor
 
     def get_optimizer(self) -> WorkChain:
         """Return a ready-to-run optimizer WorkChain instance."""
 
         class Optimizer(self.optimizer_workchain):
             evaluator_workchain = self.evaluator_workchain
+            extractor = self.extractor
 
         # Make it importable
         # so aiida does not complain about the class not being found
@@ -36,18 +39,15 @@ class OptimizerBuilder:
     @staticmethod
     def _make_problem_evaluator(
         problem_workchain: Type[WorkChain],
-        extractor: Callable,
         evaluator: Type[WorkChain],
     ) -> Type[WorkChain]:
         """
         Create a new evaluator class based on the provided problem workchain and extractor.
         """  # noqa: E501
         my_problem_workchain = problem_workchain
-        my_extractor = extractor
 
         class UserEvaluator(evaluator):
             problem_workchain = my_problem_workchain
-            extractor = staticmethod(my_extractor)
 
         # Make it importable
         UserEvaluator.__name__ = evaluator.__name__
@@ -58,7 +58,6 @@ class OptimizerBuilder:
     @staticmethod
     def _make_bulk_evaluator(
         problem_builder: Type[WorkChain],
-        extractor: Callable,
         evaluator: Type[WorkChain],
     ) -> Type[WorkChain]:
         """
@@ -66,11 +65,9 @@ class OptimizerBuilder:
         """  # noqa: E501
 
         my_problem_builder = problem_builder
-        my_extractor = extractor
 
         class UserEvaluator(evaluator):
             problem_builder = my_problem_builder
-            extractor = staticmethod(my_extractor)
 
         # Make it importable
         UserEvaluator.__name__ = evaluator.__name__
@@ -119,7 +116,7 @@ class OptimizerBuilder:
         cls,
         optimizer_workchain: Type[WorkChain],
         problem_workchain: Type[WorkChain],
-        extractor: Callable,
+        extractor: Type[Callable],
         evaluator_base: Type[WorkChain] = EvalWorkChainProblem,
     ):
         """
@@ -127,12 +124,13 @@ class OptimizerBuilder:
         """
         # Dynamically create an evaluator class
         evaluator_workchain = cls._make_problem_evaluator(
-            problem_workchain, extractor, evaluator=evaluator_base
+            problem_workchain, evaluator=evaluator_base
         )
 
         return cls(
             optimizer_workchain=optimizer_workchain,
             evaluator_workchain=evaluator_workchain,
+            extractor=extractor
         )
 
     @classmethod
@@ -140,7 +138,7 @@ class OptimizerBuilder:
         cls,
         optimizer_workchain: Type[WorkChain],
         calculator_workchain: Type[WorkChain],
-        extractor: Callable,
+        extractor: Type[Callable],
         calculator_parameters: Dict[str, Any],
         bulk: ase.Atoms,
         structure_keyword: str = "structure",
@@ -158,12 +156,13 @@ class OptimizerBuilder:
         )
 
         evaluator_workchain = cls._make_bulk_evaluator(
-            problem_builder, extractor, evaluator=evaluator_base
+            problem_builder, evaluator=evaluator_base
         )
 
         return cls(
             optimizer_workchain=optimizer_workchain,
             evaluator_workchain=evaluator_workchain,
+            extractor=extractor
         )
 
     @classmethod
@@ -171,7 +170,7 @@ class OptimizerBuilder:
         cls,
         optimizer_workchain: Type[WorkChain],
         calculator_workchain: Type[WorkChain],
-        extractor: Callable,
+        extractor: Type[Callable],
         calculator_parameters: Dict[str, Any],
         mpds_query: str,
         structure_keyword: str = "structure",
@@ -191,10 +190,11 @@ class OptimizerBuilder:
         )
 
         evaluator_workchain = cls._make_bulk_evaluator(
-            problem_builder, extractor, evaluator=evaluator_base
+            problem_builder, evaluator=evaluator_base
         )
 
         return cls(
             optimizer_workchain=optimizer_workchain,
             evaluator_workchain=evaluator_workchain,
+            extractor=extractor,
         )

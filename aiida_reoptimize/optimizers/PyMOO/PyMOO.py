@@ -38,8 +38,9 @@ class _PyMOO_Base(_OptimizerBase):
         self.ctx.bounds = np.array(self.inputs.parameters["bounds"])
         self.ctx.algorithm_settings = self.inputs.parameters[
             "algorithm_settings"
-        ]  # noqa: E501
+        ]
         self.ctx.algorithm_name = self.inputs.algorithm_name.value
+        self.ctx.history = []
 
     def define_problem(self) -> Problem:
         """Define a PyMOO problem instance."""
@@ -64,14 +65,41 @@ class _PyMOO_Base(_OptimizerBase):
         problem = self.define_problem()
         algorithm = self.define_algorithm(problem)
 
+        best_value = None
+        best_pk = None
+
         while self.check_itmax():
             pop = algorithm.ask()
             targets = List(list=pop.get("X").tolist())
-            results = run(self.evaluator_workchain, targets=targets)
+            raw_results = run(self.evaluator_workchain, targets=targets)
+            results = self.extractor(raw_results["evaluation_results"])
 
-            static = StaticProblem(
-                problem, F=np.array(results["evaluation_results"])
+            # Extract PKs for each result
+            node_pks = [
+                item["pk"] if isinstance(item, dict) and "pk" in item else None
+                for item in raw_results["evaluation_results"]
+            ]
+
+            # Find best value and pk in this batch
+            min_idx = int(np.argmin(results))
+            min_value = results[min_idx]
+            min_pk = (
+                node_pks[min_idx] if node_pks[min_idx] is not None else None
             )
+
+            # Update global best
+            if best_value is None or min_value < best_value:
+                best_value = min_value
+                best_pk = min_pk
+
+            # Record history for this iteration
+            self.ctx.history.append({
+                "iteration": self.ctx.iteration,
+                "best_value": min_value,
+                "best_pk": min_pk,
+            })
+
+            static = StaticProblem(problem, F=np.array(results))
             Evaluator().eval(static, pop)
             algorithm.tell(infills=pop)
 
@@ -80,18 +108,22 @@ class _PyMOO_Base(_OptimizerBase):
 
         self.ctx["best_position"] = algorithm.result().X
         self.ctx["best_value"] = algorithm.result().F
+        self.ctx["best_node_pk"] = best_pk
 
     def finalize(self):
         """Finalize the optimization process and store results."""
         best_position = self.ctx["best_position"]
         best_value = self.ctx["best_value"]
-        # Convert numpy arrays to lists/floats
+        best_node_pk = self.ctx.get("best_node_pk", None)
         if hasattr(best_position, "tolist"):
             best_position = best_position.tolist()
         if hasattr(best_value, "item"):
             best_value = float(best_value.item())
         self.out("optimized_parameters", List(list=best_position).store())
         self.out("final_value", Float(best_value).store())
+        self.out("history", List(self.ctx.history).store())
+        if self.inputs.get_best.value:
+            self.out("result_node_pk", Int(best_node_pk).store())
 
     def define_algorithm(self):
         raise NotImplementedError(

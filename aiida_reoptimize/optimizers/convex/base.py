@@ -1,6 +1,6 @@
 import numpy as np
 from aiida.engine import run
-from aiida.orm import Float, List
+from aiida.orm import Float, Int, List
 
 from ..OptimizerBase import _OptimizerBase
 
@@ -11,12 +11,7 @@ class _GDBase(_OptimizerBase):
     @classmethod
     def define(cls, spec):
         super().define(spec)
-        spec.output(
-            "history",
-            valid_type=List,
-            required=True,
-            help="Optimization history.",
-        )
+
         spec.exit_code(
             400,
             "ERROR_MAX_ITERATIONS",
@@ -86,12 +81,13 @@ class _GDBase(_OptimizerBase):
                 if parameters is not None
                 else self.ctx.parameters.copy()
             ),
-            "gradient": (
-                gradient
+            "gradient_norm": (
+                np.linalg.norm(gradient)
                 if gradient is not None
                 else getattr(self.ctx, "gradient", None)
             ),
             "value": (value if value is not None else self.ctx.results[0]),
+            "result_node_pk": self.ctx.raw_results[0]["pk"],
         })
 
     def update_parameters(self):
@@ -104,7 +100,8 @@ class _GDBase(_OptimizerBase):
         while self.should_continue():
             targets = self.generate_targets()
             results = run(self.evaluator_workchain, targets=targets)
-            self.ctx.results = results["evaluation_results"]
+            self.ctx.raw_results = results["evaluation_results"]
+            self.ctx.results = self.extractor(self.ctx.raw_results)
             self.ctx.gradient = self.evaluate_gradient_numerically(
                 self.ctx.results
             )
@@ -127,3 +124,7 @@ class _GDBase(_OptimizerBase):
         )
         self.out("final_value", Float(self.ctx.results[0]).store())
         self.out("history", List(list=self.ctx.history).store())
+        if self.inputs.get_best.value:
+            self.out(
+                "result_node_pk", Int(self.ctx.raw_results[0]["pk"]).store()
+            )
