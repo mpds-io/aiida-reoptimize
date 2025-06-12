@@ -157,7 +157,7 @@ from aiida_reoptimize.optimizers.convex.QN import BFGSOptimizer
 builder = OptimizerBuilder.from_problem(
     optimizer_workchain=BFGSOptimizer,
     problem_workchain=Sphere,
-    extractor=lambda x: x["value"].value,
+    extractor=lambda x: x["value"],
 )
 optimizer = builder.get_optimizer()
 ```

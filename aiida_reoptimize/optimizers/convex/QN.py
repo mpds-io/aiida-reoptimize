@@ -62,7 +62,7 @@ class BFGSOptimizer(_GDBase):
             trial_results = run(
                 self.evaluator_workchain, targets=List(trial_targets)
             )
-            f_trial = trial_results["evaluation_results"][0]
+            f_trial = self.extractor(trial_results["evaluation_results"])[0]
             if f_trial <= f0 + sigma * alpha * np.dot(grad, direction):
                 return alpha
             alpha *= beta

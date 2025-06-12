@@ -3,20 +3,24 @@ from aiida.engine import run
 from aiida.orm import Dict, Int, Str
 
 from aiida_reoptimize.base.Evaluation import EvalWorkChainProblem
+from aiida_reoptimize.base.Extratractors import BasicExtractor
 from aiida_reoptimize.optimizers.PyMOO.PyMOO import PyMOO_Optimizer
 from aiida_reoptimize.problems.problems import Sphere
 
 load_profile()
 
+# Setup extracor
+dummy_extractor = BasicExtractor(node_exctractor=lambda x: x["value"].value)
+
 
 # setup Evaluator
 class UserEvaluator(EvalWorkChainProblem):
     problem_workchain = Sphere
-    extractor = staticmethod(lambda x: x["value"].value)
 
 
 class ExamplePyMOO(PyMOO_Optimizer):
     evaluator_workchain = UserEvaluator
+    extractor = dummy_extractor
 
 
 parameters = Dict({
@@ -37,5 +41,12 @@ results = run(
 )
 
 print("Optimization Results:")
-print(f"Best position: {results['optimized_parameters']}")
-print(f"Best value: {results['final_value']}")
+if results:
+    print(results)
+    print(f"Best position: {results['optimized_parameters']}")
+    print(f"Best value: {results['final_value']}")
+    print(f"Best node: {results['result_node_pk']}")
+
+print("Optimization history:")
+for iter_ in results['history']:
+    print(iter_)
