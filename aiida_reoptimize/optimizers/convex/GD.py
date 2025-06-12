@@ -24,6 +24,12 @@ class RMSpropOptimizer(_GDBase):
 
     def update_parameters(self, gradient: np.array):
         """Update parameters using RMSprop algorithm."""
+        self.record_history(
+            parameters=self.ctx.parameters,
+            gradient=gradient,
+            value=self.ctx.results[0],
+        )
+
         # ! XXX add np.inf / np.nan safety check
         self.ctx.accumulated_grad_sq = (
             self.ctx.rho * self.ctx.accumulated_grad_sq
@@ -39,10 +45,10 @@ class RMSpropOptimizer(_GDBase):
             f"\nIteration:{self.ctx.iteration}/{self.ctx.itmax},\nCurrent parameters is:{self.ctx.parameters}\nCurrent gradient norm is: {np.linalg.norm(gradient)}\nCurrent  target value is: {self.ctx.results[0]}"  # noqa: E501
         )
         self.ctx.parameters -= step
+        self.ctx.iteration += 1
 
 
 class AdamOptimizer(_GDBase):
-
     def initialize(self):
         super().initialize()
         self.ctx.m = np.zeros_like(self.ctx.parameters)
@@ -67,6 +73,12 @@ class AdamOptimizer(_GDBase):
 
     def update_parameters(self, gradient: np.array):
         """Update parameters using ADAM algorithm."""
+
+        self.record_history(
+            parameters=self.ctx.parameters,
+            gradient=gradient,
+            value=self.ctx.results[0],
+        )
 
         self.ctx.m = (
             self.ctx.beta1 * self.ctx.m

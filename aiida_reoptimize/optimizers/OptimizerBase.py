@@ -8,10 +8,13 @@ class _OptimizerBase(WorkChain):
     """Base class for optimization algorithms."""
 
     evaluator_workchain: Type[WorkChain]
+    extractor: Type[callable]
 
     @classmethod
     def define(cls, spec):
         assert cls.evaluator_workchain is not None, "evaluator must be set"  # noqa: E501
+        assert cls.extractor is not None, "extractor must be set"
+
         super().define(spec)
         spec.input(
             "parameters", valid_type=Dict, help="Optimization parameters."
@@ -25,7 +28,7 @@ class _OptimizerBase(WorkChain):
         spec.input(
             "get_best",
             valid_type=Bool,
-            default=lambda: Bool(False),
+            default=lambda: Bool(True),
             help="Whether to return the best result node identifier.",
         )
 
@@ -42,6 +45,13 @@ class _OptimizerBase(WorkChain):
             valid_type=Float,
             required=True,
             help="Final value of the objective function.",
+        )
+
+        spec.output(
+            "history",
+            valid_type=List,
+            required=False,
+            help="Optimization history.",
         )
 
         spec.output(

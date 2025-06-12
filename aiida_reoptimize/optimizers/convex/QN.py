@@ -62,7 +62,7 @@ class BFGSOptimizer(_GDBase):
             trial_results = run(
                 self.evaluator_workchain, targets=List(trial_targets)
             )
-            f_trial = trial_results["evaluation_results"][0]
+            f_trial = self.extractor(trial_results["evaluation_results"])[0]
             if f_trial <= f0 + sigma * alpha * np.dot(grad, direction):
                 return alpha
             alpha *= beta
@@ -73,6 +73,13 @@ class BFGSOptimizer(_GDBase):
 
     def update_parameters(self, gradient: np.array):
         """Update parameters using BFGS direction and step size."""
+
+        self.record_history(
+            parameters=self.ctx.parameters,
+            gradient=gradient,
+            value=self.ctx.results[0],
+        )
+
         if self.ctx.iteration == 1:
             # First iteration, no previous gradient/parameters
             direction = -np.dot(self.ctx.inv_hessian, gradient)

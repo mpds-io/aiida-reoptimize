@@ -1,12 +1,22 @@
 import numpy as np
 from aiida.engine import run
-from aiida.orm import Float, List
+from aiida.orm import Float, Int, List
 
 from ..OptimizerBase import _OptimizerBase
 
 
 class _GDBase(_OptimizerBase):
     """Basis for SDG based optimization algorithm"""
+
+    @classmethod
+    def define(cls, spec):
+        super().define(spec)
+
+        spec.exit_code(
+            400,
+            "ERROR_MAX_ITERATIONS",
+            message="Optimization did not converge within the maximum iterations.",  # noqa: E501
+        )
 
     def initialize(self):
         """Initialize context variables and optimization parameters."""
@@ -19,9 +29,7 @@ class _GDBase(_OptimizerBase):
             .get("tolerance")
             or 1e-3
         )
-        self.ctx.itmax = (
-            self.inputs.itmax.value
-        )
+        self.ctx.itmax = self.inputs.itmax.value
         self.ctx.epsilon = (
             self.inputs["parameters"]
             .get("algorithm_settings", {})
@@ -36,6 +44,7 @@ class _GDBase(_OptimizerBase):
         )
         self.ctx.converged = False
         self.ctx.iteration = 1
+        self.ctx.history = []
 
     def should_continue(self):
         return not self.ctx.converged and self.ctx.iteration < self.ctx.itmax
@@ -63,6 +72,24 @@ class _GDBase(_OptimizerBase):
             self.ctx.converged = True
         return gradient
 
+    def record_history(self, parameters=None, gradient=None, value=None):
+        """Record the current state in the optimization history."""
+        self.ctx.history.append({
+            "iteration": self.ctx.iteration,
+            "parameters": (
+                parameters
+                if parameters is not None
+                else self.ctx.parameters.copy()
+            ),
+            "gradient_norm": (
+                np.linalg.norm(gradient)
+                if gradient is not None
+                else getattr(self.ctx, "gradient", None)
+            ),
+            "value": (value if value is not None else self.ctx.results[0]),
+            "result_node_pk": self.ctx.raw_results[0]["pk"],
+        })
+
     def update_parameters(self):
         raise NotImplementedError(
             "Subclasses must implement update_parameters()"
@@ -73,16 +100,21 @@ class _GDBase(_OptimizerBase):
         while self.should_continue():
             targets = self.generate_targets()
             results = run(self.evaluator_workchain, targets=targets)
-            self.ctx.results = results["evaluation_results"]
+            self.ctx.raw_results = results["evaluation_results"]
+            self.ctx.results = self.extractor(self.ctx.raw_results)
             self.ctx.gradient = self.evaluate_gradient_numerically(
                 self.ctx.results
             )
             self.update_parameters(self.ctx.gradient)
 
         if not self.ctx.converged:
-            # ! TODO add error exit
             self.report(
-                "Optimization did not converge within the maximum iterations."
+                f"Optimization did not converge after {self.ctx.itmax} iterations."  # noqa: E501
+            )
+            return self.exit_codes.ERROR_MAX_ITERATIONS
+        else:
+            self.report(
+                f"Optimization converged after {self.ctx.iteration} iterations."  # noqa: E501
             )
 
     def finalize(self):
@@ -91,3 +123,8 @@ class _GDBase(_OptimizerBase):
             List(list=self.ctx.parameters.tolist()).store(),
         )
         self.out("final_value", Float(self.ctx.results[0]).store())
+        self.out("history", List(list=self.ctx.history).store())
+        if self.inputs.get_best.value:
+            self.out(
+                "result_node_pk", Int(self.ctx.raw_results[0]["pk"]).store()
+            )

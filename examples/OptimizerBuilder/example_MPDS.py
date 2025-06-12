@@ -3,7 +3,6 @@ from aiida.common.exceptions import NotExistent
 from aiida.engine import run
 from aiida.orm import Dict, Int, List, load_node
 from aiida_fleur.workflows.scf import FleurScfWorkChain
-from ase.spacegroup import crystal
 
 from aiida_reoptimize.base.Extratractors import BasicExtractor
 from aiida_reoptimize.base.OptimizerBuilder import OptimizerBuilder
@@ -31,25 +30,20 @@ for code_label in required_codes:
     except NotExistent as e:
         raise RuntimeError(f"Failed to load code node: {e}") from e
 
-# Setup structure
-a = 5.511
-c = 7.796
-
-atoms = crystal(
-    ["Sr", "Ti", "O", "O"],
-    basis=[(0, 0, 0.25), (0.0, 0.5, 0.0), (0.2451, 0.7451, 0), (0, 0.5, 0.25)],
-    spacegroup=140,
-    cellpar=[a, a, c, 90, 90, 90],
-)
 
 # set up the calculator for structure optimization
-builder = OptimizerBuilder.from_bulk(
+builder = OptimizerBuilder.from_MPDS(
     optimizer_workchain=BFGSOptimizer,
     calculator_workchain=FleurScfWorkChain,
     extractor=dummy_extractor,
     calculator_parameters={"inpgen": inpgen_code, "fleur": fleur_code},
-    bulk=atoms,
+    mpds_query="SrTiO3/140",
 )
+
+# Setup lattice parameters
+# TODO find a better way to get these parameters
+a = 5.511
+c = 7.796
 
 optimizer_parameters = {
     "itmax": Int(20),
