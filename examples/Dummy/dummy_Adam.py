@@ -3,20 +3,24 @@ from aiida.engine import run
 from aiida.orm import Dict, Int, List
 
 from aiida_reoptimize.base.Evaluation import EvalWorkChainProblem
+from aiida_reoptimize.base.Extratractors import BasicExtractor
 from aiida_reoptimize.optimizers.convex.GD import AdamOptimizer
 from aiida_reoptimize.problems.problems import Sphere
 
 load_profile()
 
+# Setup basic extractor
+dummy_extractor = BasicExtractor(node_exctractor=lambda x: x["value"].value)
+
 
 # setup Evaluator
 class UserEvaluator(EvalWorkChainProblem):
     problem_workchain = Sphere
-    extractor = staticmethod(lambda x: x["value"].value)
 
 
 class ExampleAdam(AdamOptimizer):
     evaluator_workchain = UserEvaluator
+    extractor = dummy_extractor
 
 
 parameters = Dict({
@@ -36,6 +40,11 @@ results = run(
 
 print("Optimization Results:")
 if results:
+    print(results)
     print(f"Best position: {results['optimized_parameters']}")
     print(f"Best value: {results['final_value']}")
-    print(f"History: {results['history']}")
+    print(f"Best node: {results['result_node_pk']}")
+
+print("Optimization history:")
+for iter_ in results['history']:
+    print(iter_)
