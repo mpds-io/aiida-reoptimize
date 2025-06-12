@@ -32,7 +32,6 @@ class __EvalBaseWorkChain(WorkChain):
         raise NotImplementedError("Subclasses must implement evaluate()")
 
     def result(self):
-        # TODO make it return a list of PK of result nodes
         results = []
         for i in range(len(self.inputs.targets)):
             process = self.ctx[f"eval_{i}"]
