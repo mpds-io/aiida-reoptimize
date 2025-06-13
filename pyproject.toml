@@ -1,7 +1,7 @@
 [project]
 name = "aiida-reoptimize"
 version = "0.4.0"
-description = "Calculators for external optimization of crystal structures."
+description = "Algorithms for external optimization of crystal structures"
 authors = [
     {name = "Anton Domnin",email = "a.v.daomnin@gmail.com"},
 ]
@@ -11,6 +11,7 @@ requires-python = ">=3.11,<4"
 dependencies = [
     "pymoo==0.6.1.3",
     "aiida-core (>=2.6.4,<3.0.0)",
+    "mpds_client",
 ]
 
 [build-system]
