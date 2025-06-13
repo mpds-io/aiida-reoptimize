@@ -5,8 +5,8 @@ from aiida.orm import load_node
 
 
 class BasicExtractor:
-    def __init__(self, node_exctractor: Type[callable], penalty=1e+10):
-        self.node_extractor = node_exctractor
+    def __init__(self, node_extractor: Type[callable], penalty=1e+10):
+        self.node_extractor = node_extractor
         self.penalty = penalty
 
     def __call__(self, results: list):

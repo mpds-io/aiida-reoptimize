@@ -3,7 +3,7 @@ from aiida.engine import run
 from aiida.orm import Dict, Int, List
 
 from aiida_reoptimize.base.Evaluation import EvalWorkChainProblem
-from aiida_reoptimize.base.Extratractors import BasicExtractor
+from aiida_reoptimize.base.Extractors import BasicExtractor
 from aiida_reoptimize.optimizers.convex.QN import BFGSOptimizer
 from aiida_reoptimize.problems.problems import Sphere
 
