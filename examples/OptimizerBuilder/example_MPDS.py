@@ -4,7 +4,7 @@ from aiida.engine import run
 from aiida.orm import Dict, Int, List, load_node
 from aiida_fleur.workflows.scf import FleurScfWorkChain
 
-from aiida_reoptimize.base.Extratractors import BasicExtractor
+from aiida_reoptimize.base.Extractors import BasicExtractor
 from aiida_reoptimize.base.OptimizerBuilder import OptimizerBuilder
 from aiida_reoptimize.base.utils import find_nodes
 from aiida_reoptimize.optimizers.convex.QN import BFGSOptimizer
