@@ -2,22 +2,19 @@
 
 **Atomic structure and parameter optimization powered by AiiDA and PyMOO**
 
----
 
 ## Overview
 
-`aiida-reoptimize` is a flexible framework for running advanced optimization workflows in computational materials science and chemistry, leveraging the AiiDA workflow engine and the PyMOO optimization library. It supports both parameter and atomic structure optimization, and is designed for easy integration with external simulation codes and custom workflows.
+`aiida-reoptimize` is a flexible framework for running advanced optimization workflows in computational materials science and chemistry, leveraging the AiiDA workflows and the PyMOO optimization library. It supports both lattice and atomic positions optimization and is designed for easy integration with external simulation codes and custom workflows.
 
----
 
 ## Features
 
 - **PyMOO integration**: Use state-of-the-art algorithms from the PyMOO library.
 - **Flexible evaluator system**: Decouple optimization logic from the actual calculation, supporting both simple function optimization and structure-based workflows.
 - **Structure optimization**: Easily optimize lattice parameters or atomic positions using the `StructureCalculator` and structure-aware evaluators.
-- **Extensible**: allows you to add custom optimizers, evaluators, or problem definitions without writing large amounts of code.
+- **Extensible**: allows adding custom optimizers, evaluators, or problem definitions without writing large amounts of code.
 
----
 
 ## Technical Details
 
@@ -32,7 +29,7 @@
   - **Parameter optimizers**: Directly optimize numerical parameters.
   - **Structure optimizers**: Modify and optimize crystal structures.
 
----
+
 ## Algorithms
 
 Currently, two types of algorithms are implemented.
@@ -47,7 +44,8 @@ These optimizers are implemented as AiiDA WorkChains:
 
 ## Input parameters of the optimizers
 
-All implemented algorithms accept a common parameters:
+All implemented algorithms accept common input:
+
 - `itmax` (Int): maximal number of iterations (default: `100`)
 - `parameters` (Dict): Dictionary that contains algorithms specific settings (in `algorithm_settings`, `Dict`) and additional parameters required for optimization
 
@@ -72,7 +70,6 @@ All convex optimizers accept the following parameters (passed as a `Dict` under 
 **Adam-specific settings** (inside `algorithm_settings`):
 - `learning_rate` (float): Step size for parameter updates (default: `1e-3`)
 - `beta1`, `beta2` (float): Exponential decay rates for moment estimates (default: `0.9`, `0.999`)
-
 
 **BFGS-specific settings** (inside `algorithm_settings`):
 - `alpha` (float): Initial step size for the line search procedure, which influences the starting magnitude of parameter updates. A larger value may speed up convergence but risks overshooting, while a smaller value ensures stability at the cost of slower progress (default: `1.0`).
@@ -113,6 +110,7 @@ When specifying operators such as `sampling`, `selection`, `crossover`, `mutatio
 **not** an instance of the operator class.
 
 For example:
+
 ```python
 parameters = Dict({
     "algorithm_name": "GA",
@@ -127,7 +125,6 @@ parameters = Dict({
 })
 ```
 
----
 
 ## Installation
 
@@ -137,7 +134,6 @@ cd aiida-reoptimize
 pip install .
 ```
 
----
 
 ## Usage
 
@@ -178,13 +174,11 @@ optimizer_parameters = {
 results = run(optimizer, **optimizer_parameters)
 ```
 
----
 
 ## Example: Structure Optimization
 
 For detailed examples of structure optimization workflows, refer to the [examples directory](https://github.com/mpds-io/aiida-reoptimize/tree/master/examples). It contains sample scripts and configurations to help you get started with optimizing atomic structures and parameters using `aiida-reoptimize`.
 
----
 
 ## References
 
@@ -192,10 +186,9 @@ For detailed examples of structure optimization workflows, refer to the [example
 - [AiiDA: Automated Interactive Infrastructure and Database for Computational Science](https://www.aiida.net)
 - [Similar work by Dominik Gresch](https://github.com/greschd/aiida-optimize)
 
----
 
 ## License
 
 MIT
 
-&copy; 2025 Tilde Materials Informatics and Materials Platform for Data Science LLC
+&copy; 2025 Tilde MI and Materials Platform for Data Science LLC
