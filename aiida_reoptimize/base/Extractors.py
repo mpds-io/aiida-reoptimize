@@ -18,7 +18,12 @@ class BasicExtractor:
                     node = load_node(item.get("pk"))
                     extracted = self.node_extractor(node.outputs)
                     if extracted is not None:
-                        value = extracted
+                        # Sometimes Aida returns Python types,
+                        # This check allows you to catch it
+                        if hasattr(extracted, 'value'):
+                            value = extracted.value
+                        else:
+                            value = extracted
                 except NotExistent:
                     pass
             values.append(value)
