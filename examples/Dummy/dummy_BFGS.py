@@ -10,7 +10,7 @@ from aiida_reoptimize.problems.problems import Sphere
 load_profile()
 
 # Setup extracor
-dummy_extractor = BasicExtractor(node_exctractor=lambda x: x["value"].value)
+dummy_extractor = BasicExtractor(node_extractor=lambda x: x["value"])
 
 
 # setup Evaluator

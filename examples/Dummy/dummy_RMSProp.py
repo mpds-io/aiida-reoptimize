@@ -11,7 +11,7 @@ load_profile()
 
 
 # Setup basic extractor
-dummy_extractor = BasicExtractor(node_exctractor=lambda x: x["value"].value)
+dummy_extractor = BasicExtractor(node_extractor=lambda x: x["value"])
 
 
 # setup Evaluator
@@ -25,12 +25,12 @@ class ExampleRMSprop(RMSpropOptimizer):
 
 
 parameters = Dict({
-    "algorithm_settings": {"learning_rate": 0.01},
-    "initial_parameters": List([0.1, -0.1, -0.2]),
+    "algorithm_settings": {"learning_rate": 0.1, "rho": 0.5},
+    "initial_parameters": List([1.1, -5.1, -3.2]),
 })
 
 __parameters = Dict(dict={
-    "itmax": Int(35),
+    "itmax": Int(100),
     "parameters": parameters,
 })
 

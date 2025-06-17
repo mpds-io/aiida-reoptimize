@@ -10,7 +10,7 @@ from aiida_reoptimize.problems.problems import Sphere
 load_profile()
 
 # Setup basic extractor
-dummy_extractor = BasicExtractor(node_extractor=lambda x: x["value"].value)
+dummy_extractor = BasicExtractor(node_extractor=lambda x: x["value"])
 
 
 # setup Evaluator
@@ -24,14 +24,20 @@ class ExampleAdam(AdamOptimizer):
 
 
 parameters = Dict({
-    "algorithm_settings": {"learning_rate": 0.01},
+    "algorithm_settings": {
+        "learning_rate": 0.01,
+        "beta1": 0.8,
+        "beta2": 0.899,
+    },
     "initial_parameters": List([0.1, -0.1, -0.2]),
 })
 
-__parameters = Dict(dict={
-    "itmax": Int(100),
-    "parameters": parameters,
-})
+__parameters = Dict(
+    dict={
+        "itmax": Int(5),
+        "parameters": parameters,
+    }
+)
 
 results = run(
     ExampleAdam,
@@ -46,5 +52,5 @@ if results:
     print(f"Best node: {results['result_node_pk']}")
 
 print("Optimization history:")
-for iter_ in results['history']:
+for iter_ in results["history"]:
     print(iter_)

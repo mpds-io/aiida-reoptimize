@@ -10,7 +10,7 @@ from aiida_reoptimize.problems.problems import Sphere
 load_profile()
 
 # Setup extracor
-dummy_extractor = BasicExtractor(node_exctractor=lambda x: x["value"].value)
+dummy_extractor = BasicExtractor(node_extractor=lambda x: x["value"])
 
 
 # setup Evaluator
@@ -26,11 +26,11 @@ class ExamplePyMOO(PyMOO_Optimizer):
 parameters = Dict({
     'dimensions': 3,
     'bounds': [[-1.0, 3.0], [-5.0, 4.0], [-2.0, 1.0]],
-    'algorithm_settings': {"pop_size": 2, "c1": 2.0, "c2": 2.0, "w": 0.5},
+    'algorithm_settings': {"pop_size": 10, "c1": 2.0, "c2": 2.0, "w": 0.5},
 })
 
 __parameters = Dict(dict={
-    'itmax': Int(2),
+    'itmax': Int(10),
     'parameters': parameters,
     'algorithm_name': Str('PSO'),
 })
