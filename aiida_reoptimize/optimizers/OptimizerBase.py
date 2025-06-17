@@ -86,4 +86,4 @@ class _OptimizerBase(WorkChain):
 
     def check_itmax(self):
         """Check if the optimization should continue."""
-        return self.ctx.iteration < self.inputs.itmax.value
+        return self.ctx.iteration <= self.inputs.itmax.value

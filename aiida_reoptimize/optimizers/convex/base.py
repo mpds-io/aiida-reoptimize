@@ -47,7 +47,7 @@ class _GDBase(_OptimizerBase):
         self.ctx.history = []
 
     def should_continue(self):
-        return not self.ctx.converged and self.ctx.iteration < self.ctx.itmax
+        return not self.ctx.converged and self.ctx.iteration <= self.ctx.itmax
 
     def generate_targets(self):
         """Generate targets for numerical gradient evaluation."""
@@ -77,7 +77,7 @@ class _GDBase(_OptimizerBase):
         self.ctx.history.append({
             "iteration": self.ctx.iteration,
             "parameters": (
-                parameters
+                parameters.copy()
                 if parameters is not None
                 else self.ctx.parameters.copy()
             ),
