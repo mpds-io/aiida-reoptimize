@@ -12,7 +12,7 @@ from aiida_reoptimize.optimizers.convex.GD import AdamOptimizer
 load_profile()
 
 dummy_extractor = BasicExtractor(
-    node_extractor=lambda x: x["output_scf_wc_para"]["total_energy"]
+    node_extractor=lambda x: x["output_relax_wc_para"]["energy"]
 )
 
 # Find aiida codes for Fleur and inpgen
@@ -39,7 +39,7 @@ wf_relax_scf = {
     }
 
 wf_relax = {
-    'force_criterion': 0.005,
+    'force_criterion': 0.01,
     'relax_iter': 8
     }
 
