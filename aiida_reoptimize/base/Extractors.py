@@ -12,13 +12,14 @@ class BasicExtractor:
     def __call__(self, results: list):
         values = []
         for item in results:
-            if item["status"] == "ok":
+            value = self.penalty
+            if item.get("status") == "ok":
                 try:
-                    node = load_node(item["pk"])
-                    value = self.node_extractor(node.outputs)
+                    node = load_node(item.get("pk"))
+                    extracted = self.node_extractor(node.outputs)
+                    if extracted is not None:
+                        value = extracted
                 except NotExistent:
-                    value = self.penalty
-            else:
-                value = self.penalty
+                    pass
             values.append(value)
         return values
