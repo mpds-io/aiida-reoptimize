@@ -7,12 +7,12 @@ from aiida_fleur.workflows.scf import FleurScfWorkChain
 from aiida_reoptimize.base.Extractors import BasicExtractor
 from aiida_reoptimize.base.OptimizerBuilder import OptimizerBuilder
 from aiida_reoptimize.base.utils import find_nodes
-from aiida_reoptimize.optimizers.convex.QN import BFGSOptimizer
+from aiida_reoptimize.optimizers.convex.GD import AdamOptimizer
 
 load_profile()
 
 dummy_extractor = BasicExtractor(
-    node_exctractor=lambda x: x["output_scf_wc_para"]["total_energy"]
+    node_extractor=lambda x: x["output_scf_wc_para"]["total_energy"]
 )
 
 # Find aiida codes for Fleur and inpgen
@@ -33,23 +33,23 @@ for code_label in required_codes:
 
 # set up the calculator for structure optimization
 builder = OptimizerBuilder.from_MPDS(
-    optimizer_workchain=BFGSOptimizer,
+    optimizer_workchain=AdamOptimizer,
     calculator_workchain=FleurScfWorkChain,
     extractor=dummy_extractor,
     calculator_parameters={"inpgen": inpgen_code, "fleur": fleur_code},
-    mpds_query="SrTiO3/140",
+    mpds_query="SrTiO3/221",
+    structure_keyword=("structure",)
 )
 
 # Setup lattice parameters
 # TODO find a better way to get these parameters
-a = 5.511
-c = 7.796
+a = 3.905
 
 optimizer_parameters = {
-    "itmax": Int(20),
+    "itmax": Int(100),
     "parameters": Dict({
         "algorithm_settings": {"tolerance": 1e-3},
-        "initial_parameters": List([a, c]),
+        "initial_parameters": List([a]),
     }),
 }
 
