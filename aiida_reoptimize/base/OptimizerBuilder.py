@@ -79,7 +79,7 @@ class OptimizerBuilder:
     def _get_structure_problem_builder(
         bulk: ase.Atoms,
         calculator_workchain: Type[WorkChain],
-        structure_keyword: str,
+        structure_keyword: tuple,
         calculator_parameters: Dict[str, Any] = None,
     ) -> StructureCalculator:
         """
@@ -141,7 +141,7 @@ class OptimizerBuilder:
         extractor: Type[Callable],
         calculator_parameters: Dict[str, Any],
         bulk: ase.Atoms,
-        structure_keyword: str = "structure",
+        structure_keyword: tuple = ("structure"),
         evaluator_base: Type[WorkChain] = EvalWorkChainStructureProblem,
     ):
         """
@@ -173,7 +173,7 @@ class OptimizerBuilder:
         extractor: Type[Callable],
         calculator_parameters: Dict[str, Any],
         mpds_query: str,
-        structure_keyword: str = "structure",
+        structure_keyword: tuple = ("structure"),
         evaluator_base: Type[WorkChain] = EvalWorkChainStructureProblem,
     ):
         """
