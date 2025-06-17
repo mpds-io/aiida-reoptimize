@@ -9,7 +9,7 @@ from aiida_reoptimize.problems.problems import Sphere
 
 load_profile()
 
-dummy_extractor = BasicExtractor(node_exctractor=lambda x: x["value"].value)
+dummy_extractor = BasicExtractor(node_extractor=lambda x: x["value"].value)
 
 builder = OptimizerBuilder.from_problem(
     optimizer_workchain=BFGSOptimizer,
