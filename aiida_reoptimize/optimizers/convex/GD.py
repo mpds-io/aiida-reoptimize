@@ -94,7 +94,7 @@ class AdamOptimizer(_GDBase):
         denominator = np.sqrt(v_hat) + self.ctx.epsilon
         denominator[denominator <= 0] = (
             self.ctx.epsilon
-        )  # Гарантируем положительность
+        )  # must be positive
 
         step = self.ctx.learning_rate * m_hat / denominator
 
