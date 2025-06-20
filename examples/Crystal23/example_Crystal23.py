@@ -22,16 +22,22 @@ calculation_settings = Dict(
                 "numerical": {"TOLLDENS": 8, "TOLLGRID": 16},
             },
             "numerical": {
-                "TOLDEE": 9,
+                "TOLDEE": 6,
                 "BIPOSIZE": 256000000,
                 "EXCHSIZE": 256000000,
-                "MAXCYCLE": 400,
+                "MAXCYCLE": 200,
         }}}
 )
 
-basis_family, _ = DataFactory("crystal_dft.basis_family").get_or_create(
-    "MPDSBSL_NEUTRAL_24"
-)  # noqa: E501
+basis_name = "MPDSBSL_NEUTRAL_24"
+
+try:
+    basis_family, _ = DataFactory("crystal_dft.basis_family").get_or_create(
+        basis_name
+    )
+except Exception as e:
+    print(f"Error loading basis set {basis_name}: {e}")
+    raise e
 
 options = DataFactory("dict")(
     dict={
