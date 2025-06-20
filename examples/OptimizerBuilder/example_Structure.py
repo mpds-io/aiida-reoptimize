@@ -43,8 +43,8 @@ atoms = crystal(
 )
 
 # set up the calculator for structure optimization
-builder = OptimizerBuilder.from_bulk(
-    optimizer_workchain=AdamOptimizer,
+builder = OptimizerBuilder.from_ase(
+    optimizer_workchain=BFGSOptimizer,
     calculator_workchain=FleurScfWorkChain,
     extractor=dummy_extractor,
     calculator_parameters={"inpgen": inpgen_code, "fleur": fleur_code},
