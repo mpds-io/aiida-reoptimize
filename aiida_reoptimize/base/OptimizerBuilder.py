@@ -134,7 +134,7 @@ class OptimizerBuilder:
         )
 
     @classmethod
-    def from_bulk(
+    def from_ase(
         cls,
         optimizer_workchain: Type[WorkChain],
         calculator_workchain: Type[WorkChain],

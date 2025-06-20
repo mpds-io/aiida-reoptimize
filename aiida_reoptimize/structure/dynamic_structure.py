@@ -36,20 +36,17 @@ class StructureCalculator:
         self.structure_keyword = structure_keyword
         self.dynamic_structure = DynamicStructure(structure)
 
-    # ! XXX
     def set_nested(self, builder, path, value):
         obj = builder
         for key in path[:-1]:
-            # пробуем как атрибут
             if hasattr(obj, key):
                 obj = getattr(obj, key)
-            # как ключ словаря
             elif isinstance(obj, dict) and key in obj:
                 obj = obj[key]
             else:
                 raise AttributeError(f"Cannot find '{key}' in path {path}")
+
         last_key = path[-1]
-        # пытаемся установить как атрибут или как ключ словаря
         if hasattr(obj, last_key):
             setattr(obj, last_key, value)
         elif isinstance(obj, dict):
