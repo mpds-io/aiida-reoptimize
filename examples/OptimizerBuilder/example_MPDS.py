@@ -7,7 +7,7 @@ from aiida_fleur.workflows.scf import FleurScfWorkChain
 from aiida_reoptimize.base.Extractors import BasicExtractor
 from aiida_reoptimize.base.OptimizerBuilder import OptimizerBuilder
 from aiida_reoptimize.base.utils import find_nodes
-from aiida_reoptimize.optimizers.convex.GD import AdamOptimizer
+from aiida_reoptimize.optimizers.convex.QN import BFGSOptimizer
 
 load_profile()
 
@@ -33,7 +33,7 @@ for code_label in required_codes:
 
 # set up the calculator for structure optimization
 builder = OptimizerBuilder.from_MPDS(
-    optimizer_workchain=AdamOptimizer,
+    optimizer_workchain=BFGSOptimizer,
     calculator_workchain=FleurScfWorkChain,
     extractor=dummy_extractor,
     calculator_parameters={"inpgen": inpgen_code, "fleur": fleur_code},
@@ -48,7 +48,7 @@ a = 3.905
 optimizer_parameters = {
     "itmax": Int(100),
     "parameters": Dict({
-        "algorithm_settings": {"tolerance": 1e-3},
+        "algorithm_settings": {"tolerance": 1e-3, "alpha": 0.1, "beta": 0.8},
         "initial_parameters": List([a]),
     }),
 }

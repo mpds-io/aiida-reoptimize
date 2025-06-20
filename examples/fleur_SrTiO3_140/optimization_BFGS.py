@@ -84,7 +84,7 @@ class ExampleBFGS(BFGSOptimizer):
 
 
 parameters = Dict({
-    "algorithm_settings": {"tolerance": 1e-8},
+    "algorithm_settings": {"tolerance": 1e-3},
     "initial_parameters": List([a, c]),
 })
 
