@@ -56,6 +56,7 @@ class BFGSOptimizer(_GDBase):
         grad = self.ctx.gradient
 
         for _ in range(max_iter):
+            self.report(f"Performing line search iteration {_ + 1}")
             trial_params = params + alpha * direction
             trial_targets = [trial_params.tolist()]
             raw_trial_results = self.run_evaluator(

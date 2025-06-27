@@ -67,7 +67,6 @@ class _OptimizerBase(WorkChain):
             required=False,
             help="Primary key of the best result node.",
         )
-        # TODO add exit codes
 
     def initialize(self):
         raise NotImplementedError("Subclasses must implement initialize()")
