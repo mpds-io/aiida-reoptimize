@@ -1,6 +1,6 @@
 [project]
 name = "aiida-reoptimize"
-version = "0.4.0"
+version = "0.5.0"
 description = "Algorithms for external optimization of crystal structures"
 authors = [
     {name = "Anton Domnin",email = "a.v.daomnin@gmail.com"},
@@ -17,6 +17,17 @@ dependencies = [
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[project.entry-points."aiida.workflows"]
+# FleurSCF optimizers
+"aiida_reoptimize.AdamFleurSCFOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurSCF:AdamFleurSCFOptimizer"
+"aiida_reoptimize.RMSpropFleurSCFOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurSCF:RMSpropFleurSCFOptimizer"
+"aiida_reoptimize.BFGSFleurSCFOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurSCF:BFGSFleurSCFOptimizer"
+"aiida_reoptimize.PyMOOFleurSCFOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurSCF:PyMOOFleurSCFOptimizer"
+
+# Evaluators
+"aiida_reoptimize.FleurSCFLatticeProblem" = "aiida_reoptimize.workflows.Evaluation.fleur_evaluators:FleurSCFLatticeProblem"
+"aiida_reoptimize.FleurRelaxLatticeProblem" = "aiida_reoptimize.workflows.Evaluation.fleur_evaluators:FleurRelaxLatticeProblem"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.6.9"
