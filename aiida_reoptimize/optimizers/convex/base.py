@@ -1,5 +1,4 @@
 import numpy as np
-from aiida.engine import run
 from aiida.orm import Float, Int, List
 
 from ..OptimizerBase import _OptimizerBase
@@ -20,9 +19,17 @@ class _GDBase(_OptimizerBase):
 
     def initialize(self):
         """Initialize context variables and optimization parameters."""
+        # structural parameters
         self.ctx.parameters = np.array(
             self.inputs["parameters"]["initial_parameters"]
         )
+
+        # settings for calculators
+        self.ctx.calculator_parameters = (
+            self.inputs["parameters"]
+            .get("calculator_parameters", {})
+        )
+
         self.ctx.tolerance = (
             self.inputs["parameters"]
             .get("algorithm_settings", {})
@@ -99,8 +106,10 @@ class _GDBase(_OptimizerBase):
         """Main optimization loop for SDG based algorithms."""
         while self.should_continue():
             targets = self.generate_targets()
-            results = run(self.evaluator_workchain, targets=targets)
-            self.ctx.raw_results = results["evaluation_results"]
+            raw_results = self.run_evaluator(
+                targets, calculator_parameters=self.ctx.calculator_parameters
+            )
+            self.ctx.raw_results = raw_results["evaluation_results"]
             self.ctx.results = self.extractor(self.ctx.raw_results)
             self.ctx.gradient = self.evaluate_gradient_numerically(
                 self.ctx.results

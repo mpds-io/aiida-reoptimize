@@ -1,5 +1,4 @@
 import numpy as np
-from aiida.engine import run
 from aiida.orm import List
 
 from .base import _GDBase
@@ -43,8 +42,8 @@ class BFGSOptimizer(_GDBase):
     def _line_search(self, direction):
         """
         Performs a backtracking line search to determine an appropriate step
-        size along the given search direction. The method iteratively reduces 
-        the step size (alpha) by a factor of beta until the Armijo condition 
+        size along the given search direction. The method iteratively reduces
+        the step size (alpha) by a factor of beta until the Armijo condition
         is satisfied, ensuring sufficient decrease in the objective function.
         """
         alpha = self.ctx.alpha
@@ -59,10 +58,13 @@ class BFGSOptimizer(_GDBase):
         for _ in range(max_iter):
             trial_params = params + alpha * direction
             trial_targets = [trial_params.tolist()]
-            trial_results = run(
-                self.evaluator_workchain, targets=List(trial_targets)
+            raw_trial_results = self.run_evaluator(
+                List(trial_targets),
+                calculator_parameters=self.ctx.calculator_parameters,
             )
-            f_trial = self.extractor(trial_results["evaluation_results"])[0]
+            f_trial = self.extractor(raw_trial_results["evaluation_results"])[
+                0
+            ]
             if f_trial <= f0 + sigma * alpha * np.dot(grad, direction):
                 return alpha
             alpha *= beta
