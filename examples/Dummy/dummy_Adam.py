@@ -25,16 +25,17 @@ class ExampleAdam(AdamOptimizer):
 
 parameters = Dict({
     "algorithm_settings": {
-        "learning_rate": 0.01,
-        "beta1": 0.8,
-        "beta2": 0.899,
+        "learning_rate": 0.05,
+        "beta1": 0.5,
+        "beta2": 0.999,
+        "delta": 5e-4
     },
-    "initial_parameters": List([0.1, -0.1, -0.2]),
+    "initial_parameters": List([0.3, -0.2, -0.4]),
 })
 
 __parameters = Dict(
     dict={
-        "itmax": Int(5),
+        "itmax": Int(100),
         "parameters": parameters,
     }
 )

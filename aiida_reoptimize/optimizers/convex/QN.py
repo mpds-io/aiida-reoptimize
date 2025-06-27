@@ -103,10 +103,6 @@ class BFGSOptimizer(_GDBase):
         self.report(f"Current step size is {step_size}")
         self.ctx.parameters_prev = self.ctx.parameters.copy()
         self.ctx.gradient_prev = gradient.copy()
+        self.report_progress()
         self.ctx.parameters = self.ctx.parameters + step_size * direction
         self.ctx.iteration += 1
-
-        # TODO make an report function in _GDBase
-        self.report(
-            f"\nIteration:{self.ctx.iteration}/{self.ctx.itmax},\nCurrent parameters: {self.ctx.parameters}\nCurrent gradient norm: {np.linalg.norm(gradient)}\nCurrent target value: {self.ctx.results[0]}"  # noqa: E501
-        )

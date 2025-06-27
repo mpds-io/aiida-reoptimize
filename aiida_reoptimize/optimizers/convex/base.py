@@ -41,13 +41,13 @@ class _GDBase(_OptimizerBase):
             self.inputs["parameters"]
             .get("algorithm_settings", {})
             .get("epsilon")
-            or 1e-10
+            or 1e-7
         )
         self.ctx.delta = (
             self.inputs["parameters"]
             .get("algorithm_settings", {})
             .get("delta")
-            or 1e-6
+            or 5e-4
         )
         self.ctx.converged = False
         self.ctx.iteration = 1
@@ -125,6 +125,15 @@ class _GDBase(_OptimizerBase):
             self.report(
                 f"Optimization converged after {self.ctx.iteration} iterations."  # noqa: E501
             )
+
+    def report_progress(self):
+        """Report the current progress of the optimization."""
+        self.report(
+            f"\nIteration {self.ctx.iteration}/{self.ctx.itmax}:\n"
+            f"Parameters: {self.ctx.parameters},\n"
+            f"Gradient norm: {np.linalg.norm(self.ctx.gradient)},\n"
+            f"Objective value: {self.ctx.results[0]}"
+        )
 
     def finalize(self):
         self.out(
