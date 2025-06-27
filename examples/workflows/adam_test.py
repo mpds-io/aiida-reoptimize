@@ -1,6 +1,6 @@
 from aiida import load_profile
 from aiida.common.exceptions import NotExistent
-from aiida.engine import run, submit
+from aiida.engine import submit
 from aiida.orm import Dict, Int, List, StructureData, load_node
 from ase.spacegroup import crystal
 
@@ -46,14 +46,26 @@ optimizer_parameters = {
     "itmax": Int(100),
     "structure": StructureData(ase=atoms),
     "parameters": Dict({
-        "algorithm_settings": {"tolerance": 1e-3},
+            "algorithm_settings": {
+                "learning_rate": 0.05,
+                "beta1": 0.5,
+                "beta2": 0.999,
+                "delta": 5e-4
+    },
         "initial_parameters": List([a, c]),
-        # ! TODO Необходимо указывать правильные параметры для запуска fleur (MPI)
         "calculator_parameters": {
             "codes": {
                 "inpgen": nodes[inpgen_node_label],
                 "fleur": nodes[fleur_node_label],
-            }
+            },
+            "options": {
+                "resources": {
+                    "num_machines": 1,
+                    "num_mpiprocs_per_machine": 2,
+                    "num_cores_per_mpiproc": 4,
+                },
+                "max_wallclock_seconds": 6 * 60 * 60,
+            },
         },
     }),
 }
