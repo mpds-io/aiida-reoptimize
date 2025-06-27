@@ -24,13 +24,18 @@ class ExampleBFGS(BFGSOptimizer):
 
 
 parameters = Dict({
-    "algorithm_settings": {},
-    "initial_parameters": List([0.1, -0.1, -0.2]),
+    "algorithm_settings": {
+        "alpha": 1,
+        "beta": 0.8,
+        "sigma": 1e-4,
+        "linesearch_max_iter": 20,
+        "delta": 5e-4},
+    "initial_parameters": List([0.3, -0.2, -0.4]),
 })
 
 __parameters = Dict(
     dict={
-        "itmax": Int(20),
+        "itmax": Int(100),
         "parameters": parameters,
     }
 )
