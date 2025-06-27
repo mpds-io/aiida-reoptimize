@@ -68,7 +68,7 @@ for code_label in required_codes:
 problem_builder = StructureCalculator(
     structure=initial_structure,
     calculator=FleurScfWorkChain,
-    parameters={"inpgen": inpgen_code, "fleur": fleur_code},
+    calculator_parameters={"inpgen": inpgen_code, "fleur": fleur_code},
     structure_keyword="structure",
 )
 
