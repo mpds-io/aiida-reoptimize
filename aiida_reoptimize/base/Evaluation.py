@@ -131,9 +131,7 @@ class _StaticEvalStructureBase(WorkChain):
             help="List of structural parameter sets to evaluate",
         )
 
-        spec.outline(
-            cls.generate_structures, cls.evaluate, cls.result
-        )
+        spec.outline(cls.generate_structures, cls.evaluate, cls.result)
 
         spec.output(
             "evaluation_results",
@@ -151,14 +149,15 @@ class _StaticEvalStructureBase(WorkChain):
 
         loaded_codes = {}
         for key, value in code_dict.items():
-            # ! TODO add try/except
-            if isinstance(value, str):
-                loaded_codes[key] = load_code(value)
-            elif isinstance(value, int):
-                loaded_codes[key] = load_node(value)
-            else:
-                raise ValueError(f"Unsupported code format for {key}: {value}")
-            self.report(f"Loaded code for {key}: {loaded_codes[key].label}")
+            try:  
+                if isinstance(value, str):  
+                    loaded_codes[key] = load_code(value)  
+                elif isinstance(value, int):  
+                    loaded_codes[key] = load_node(value)  
+                else:
+                    raise ValueError(f"Unsupported code format for {key}: {value}")
+            except Exception as e:  
+                raise ValueError(f"Failed to load code for {key}: {e}") from e
         return loaded_codes
 
     def generate_structures(self):
@@ -190,16 +189,20 @@ class _StaticEvalStructureBase(WorkChain):
 
 
 class StaticEvalLatticeProblem(_StaticEvalStructureBase):
-
     def generate_structures(self):
         """
         Generate new structures and builders using StructureCalculator.
+        This workflow is needed in order to create static evaluators based on it,
+        i.e., such evaluators. Unlike EvalWorkChainStructureProblem,
+        which is rigidly tied to a specific structure at creation time,
+        this workflow accepts a structure as an argument, which allows
+        the creation of static evaluators that can be used in different tasks,
+        and can also be imported by the AiiDA daemon.
         """
-        # !XXX Explain in docs why do i do this
+
         self.ctx.builders = []
         targets = self.inputs.targets.get_list()
-        
-        # ! TODO move it into some function
+
         calculator_parameters = self.inputs.calculator_parameters.get_dict()
         codes = calculator_parameters.pop("codes", {})
         loaded_codes = self.load_codes(codes)
@@ -221,6 +224,7 @@ class StaticEvalLatticeProblem(_StaticEvalStructureBase):
         Submit the calculator workchain for each generated structure.
         """
         target_values = {}
+        # ! XXX The evaluate method submits all workchains simultaneously, may it lead to resource contention?
         for idx, builder in enumerate(self.ctx.builders):
             future = self.submit(builder)
             target_values[f"eval_{idx}"] = future

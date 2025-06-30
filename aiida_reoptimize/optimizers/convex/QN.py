@@ -59,6 +59,8 @@ class BFGSOptimizer(_GDBase):
             self.report(f"Performing line search iteration {_ + 1}")
             trial_params = params + alpha * direction
             trial_targets = [trial_params.tolist()]
+            # TODO check if i need a exception handling here.
+            # TODO add a parameters shift if all calculations a failed
             raw_trial_results = self.run_evaluator(
                 List(trial_targets),
                 calculator_parameters=self.ctx.calculator_parameters,
