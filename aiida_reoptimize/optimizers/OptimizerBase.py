@@ -1,7 +1,7 @@
 from typing import Type
 
-from aiida.engine import WorkChain
-from aiida.orm import Bool, Dict, Float, Int, List
+from aiida.engine import WorkChain, run
+from aiida.orm import Bool, Dict, Float, Int, List, StructureData
 
 
 class _OptimizerBase(WorkChain):
@@ -30,6 +30,13 @@ class _OptimizerBase(WorkChain):
             valid_type=Bool,
             default=lambda: Bool(True),
             help="Whether to return the best result node identifier.",
+        )
+        
+        spec.input(
+            "structure",
+            valid_type=StructureData,
+            required=False,
+            help="Chemical structure for the optimization.",
         )
 
         spec.outline(cls.initialize, cls.optimization_process, cls.finalize)
@@ -60,7 +67,6 @@ class _OptimizerBase(WorkChain):
             required=False,
             help="Primary key of the best result node.",
         )
-        # TODO add exit codes
 
     def initialize(self):
         raise NotImplementedError("Subclasses must implement initialize()")
@@ -83,6 +89,18 @@ class _OptimizerBase(WorkChain):
             self.out(
                 "result_node_pk", Int(self.ctx.best_result_node_pk).store()
             )
+
+    def run_evaluator(self, targets, **kwargs):
+        """Run the evaluator workchain with or without structure input."""
+        if self.inputs.get("structure"):
+            return run(
+                self.evaluator_workchain,
+                targets=targets,
+                structure=self.inputs.structure,
+                **kwargs,
+            )
+        else:
+            return run(self.evaluator_workchain, targets=targets)
 
     def check_itmax(self):
         """Check if the optimization should continue."""

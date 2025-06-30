@@ -1,7 +1,9 @@
 from typing import Type
 
 from aiida.engine import ToContext, WorkChain
-from aiida.orm import Int, List
+from aiida.orm import Dict, Int, List, StructureData, load_code, load_node
+
+from aiida_reoptimize.structure.dynamic_structure import StructureCalculator
 
 
 class __EvalBaseWorkChain(WorkChain):
@@ -91,6 +93,141 @@ class EvalWorkChainStructureProblem(__EvalBaseWorkChain):
             builder = self.problem_builder.get_builder(x)
             future = self.submit(builder)
             target_values[f"eval_{i}"] = future
+        return ToContext(**target_values)
+
+
+class _StaticEvalStructureBase(WorkChain):
+    calculator_workchain: Type[WorkChain]
+
+    @classmethod
+    def define(cls, spec):
+        """Specify inputs, outputs, and the workchain outline."""
+        super().define(spec)
+        # It only works if targets is a list of lists.
+        # In other cases it crashes.
+        spec.input(
+            "structure",
+            valid_type=StructureData,
+            help="Structure to evaluate with the workchain",
+        )
+
+        spec.input(
+            "structure_keyword",
+            valid_type=List,
+            default=lambda: List([
+                "structure",
+            ]),
+        )
+
+        spec.input(
+            "calculator_parameters",
+            valid_type=Dict,
+            help="Parameters for the calculator workchain",
+        )
+
+        spec.input(
+            "targets",
+            valid_type=List,
+            help="List of structural parameter sets to evaluate",
+        )
+
+        spec.outline(cls.generate_structures, cls.evaluate, cls.result)
+
+        spec.output(
+            "evaluation_results",
+            valid_type=List,
+            help="List of evaluation results for each target",
+        )
+
+    def load_codes(self, code_dict: dict):
+        """
+        Load the calculator workchain code from the provided dictionary.
+        """
+
+        if not code_dict:
+            raise ValueError("No codes provided in the code dictionary")
+
+        loaded_codes = {}
+        for key, value in code_dict.items():
+            try:  
+                if isinstance(value, str):  
+                    loaded_codes[key] = load_code(value)  
+                elif isinstance(value, int):  
+                    loaded_codes[key] = load_node(value)  
+                else:
+                    raise ValueError(f"Unsupported code format for {key}: {value}")
+            except Exception as e:  
+                raise ValueError(f"Failed to load code for {key}: {e}") from e
+        return loaded_codes
+
+    def generate_structures(self):
+        """
+        Generate structures based on the input structure and targets.
+        This method should be implemented in subclasses to modify the structure.
+        """
+        raise NotImplementedError(
+            "Subclasses must implement generate_structures"
+        )
+
+    def evaluate(self):
+        """
+        Evaluate the generated structures using the specified workchain.
+        This method should be implemented in subclasses to perform the evaluation.
+        """
+        raise NotImplementedError("Subclasses must implement evaluate")
+
+    def result(self):
+        results = []
+        for i in range(len(self.inputs.targets)):
+            process = self.ctx[f"eval_{i}"]
+            res = {
+                "pk": process.pk,
+                "status": "ok" if process.is_finished_ok else "failed",
+            }
+            results.append(res)
+        self.out("evaluation_results", List(list=results).store())
+
+
+class StaticEvalLatticeProblem(_StaticEvalStructureBase):
+    def generate_structures(self):
+        """
+        Generate new structures and builders using StructureCalculator.
+        This workflow is needed in order to create static evaluators based on it,
+        i.e., such evaluators. Unlike EvalWorkChainStructureProblem,
+        which is rigidly tied to a specific structure at creation time,
+        this workflow accepts a structure as an argument, which allows
+        the creation of static evaluators that can be used in different tasks,
+        and can also be imported by the AiiDA daemon.
+        """
+
+        self.ctx.builders = []
+        targets = self.inputs.targets.get_list()
+
+        calculator_parameters = self.inputs.calculator_parameters.get_dict()
+        codes = calculator_parameters.pop("codes", {})
+        loaded_codes = self.load_codes(codes)
+        calculator_parameters.update(loaded_codes)
+
+        structure_calculator = StructureCalculator(
+            structure=self.inputs.structure.get_ase(),
+            calculator=self.calculator_workchain,
+            calculator_parameters=calculator_parameters,
+            structure_keyword=tuple(self.inputs.structure_keyword.get_list()),
+        )
+
+        for x in targets:
+            builder = structure_calculator.get_builder(x)
+            self.ctx.builders.append(builder)
+
+    def evaluate(self):
+        """
+        Submit the calculator workchain for each generated structure.
+        """
+        target_values = {}
+        # ! XXX The evaluate method submits all workchains simultaneously, may it lead to resource contention?
+        for idx, builder in enumerate(self.ctx.builders):
+            future = self.submit(builder)
+            target_values[f"eval_{idx}"] = future
         return ToContext(**target_values)
 
 

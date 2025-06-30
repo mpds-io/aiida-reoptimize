@@ -1,5 +1,4 @@
 import numpy as np
-from aiida.engine import run
 from aiida.orm import List
 
 from .base import _GDBase
@@ -43,8 +42,8 @@ class BFGSOptimizer(_GDBase):
     def _line_search(self, direction):
         """
         Performs a backtracking line search to determine an appropriate step
-        size along the given search direction. The method iteratively reduces 
-        the step size (alpha) by a factor of beta until the Armijo condition 
+        size along the given search direction. The method iteratively reduces
+        the step size (alpha) by a factor of beta until the Armijo condition
         is satisfied, ensuring sufficient decrease in the objective function.
         """
         alpha = self.ctx.alpha
@@ -57,12 +56,18 @@ class BFGSOptimizer(_GDBase):
         grad = self.ctx.gradient
 
         for _ in range(max_iter):
+            self.report(f"Performing line search iteration {_ + 1}")
             trial_params = params + alpha * direction
             trial_targets = [trial_params.tolist()]
-            trial_results = run(
-                self.evaluator_workchain, targets=List(trial_targets)
+            # TODO check if i need a exception handling here.
+            # TODO add a parameters shift if all calculations a failed
+            raw_trial_results = self.run_evaluator(
+                List(trial_targets),
+                calculator_parameters=self.ctx.calculator_parameters,
             )
-            f_trial = self.extractor(trial_results["evaluation_results"])[0]
+            f_trial = self.extractor(raw_trial_results["evaluation_results"])[
+                0
+            ]
             if f_trial <= f0 + sigma * alpha * np.dot(grad, direction):
                 return alpha
             alpha *= beta
@@ -101,10 +106,6 @@ class BFGSOptimizer(_GDBase):
         self.report(f"Current step size is {step_size}")
         self.ctx.parameters_prev = self.ctx.parameters.copy()
         self.ctx.gradient_prev = gradient.copy()
+        self.report_progress()
         self.ctx.parameters = self.ctx.parameters + step_size * direction
         self.ctx.iteration += 1
-
-        # TODO make an report function in _GDBase
-        self.report(
-            f"\nIteration:{self.ctx.iteration}/{self.ctx.itmax},\nCurrent parameters: {self.ctx.parameters}\nCurrent gradient norm: {np.linalg.norm(gradient)}\nCurrent target value: {self.ctx.results[0]}"  # noqa: E501
-        )

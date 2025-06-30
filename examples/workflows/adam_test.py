@@ -1,14 +1,14 @@
 from aiida import load_profile
 from aiida.common.exceptions import NotExistent
-from aiida.engine import run
-from aiida.orm import Dict, Int, List, load_node
-from aiida_fleur.workflows.scf import FleurScfWorkChain
+from aiida.engine import submit
+from aiida.orm import Dict, Int, List, StructureData, load_node
 from ase.spacegroup import crystal
 
 from aiida_reoptimize.base.Extractors import BasicExtractor
-from aiida_reoptimize.base.OptimizerBuilder import OptimizerBuilder
 from aiida_reoptimize.base.utils import find_nodes
-from aiida_reoptimize.optimizers.convex.GD import AdamOptimizer
+from aiida_reoptimize.workflows.Optimization.FleurSCF import (
+    AdamFleurSCFOptimizer,
+)
 
 load_profile()
 
@@ -42,22 +42,33 @@ atoms = crystal(
     cellpar=[a, a, c, 90, 90, 90],
 )
 
-# set up the calculator for structure optimization
-builder = OptimizerBuilder.from_ase(
-    optimizer_workchain=AdamOptimizer,
-    calculator_workchain=FleurScfWorkChain,
-    extractor=dummy_extractor,
-    calculator_parameters={"inpgen": inpgen_code, "fleur": fleur_code},
-    bulk=atoms,
-)
-
 optimizer_parameters = {
     "itmax": Int(100),
+    "structure": StructureData(ase=atoms),
     "parameters": Dict({
-        "algorithm_settings": {"tolerance": 1e-3},
+            "algorithm_settings": {
+                "learning_rate": 0.05,
+                "beta1": 0.5,
+                "beta2": 0.999,
+                "delta": 5e-4
+    },
         "initial_parameters": List([a, c]),
+        "calculator_parameters": {
+            "codes": {
+                "inpgen": nodes[inpgen_node_label],
+                "fleur": nodes[fleur_node_label],
+            },
+            "options": {
+                "resources": {
+                    "num_machines": 1,
+                    "num_mpiprocs_per_machine": 2,
+                    "num_cores_per_mpiproc": 4,
+                },
+                "max_wallclock_seconds": 6 * 60 * 60,
+            },
+        },
     }),
 }
 
-optimizer = builder.get_optimizer()
-results = run(optimizer, **optimizer_parameters)
+results = submit(AdamFleurSCFOptimizer, **optimizer_parameters)
+print(f"Submitted AdamFleurSCFOptimizer: {results.pk}")

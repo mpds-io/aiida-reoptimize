@@ -1,7 +1,7 @@
 from typing import Type
 
 import numpy as np
-from aiida.engine import WorkChain, run
+from aiida.engine import WorkChain
 from aiida.orm import Dict, Float, Int, List, Str
 from pymoo.core.evaluator import Evaluator
 from pymoo.core.problem import Problem
@@ -71,7 +71,9 @@ class _PyMOO_Base(_OptimizerBase):
         while self.check_itmax():
             pop = algorithm.ask()
             targets = List(list=pop.get("X").tolist())
-            raw_results = run(self.evaluator_workchain, targets=targets)
+            raw_results = self.run_evaluator(
+                targets, calculator_parameters=self.ctx.calculator_parameters
+            )
             results = self.extractor(raw_results["evaluation_results"])
 
             # Extract PKs for each result

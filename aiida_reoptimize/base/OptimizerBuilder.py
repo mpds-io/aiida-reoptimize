@@ -88,7 +88,7 @@ class OptimizerBuilder:
         return StructureCalculator(
             structure=bulk,
             calculator=calculator_workchain,
-            parameters=calculator_parameters,
+            calculator_parameters=calculator_parameters,
             structure_keyword=structure_keyword,
         )
 

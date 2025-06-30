@@ -27,12 +27,12 @@ class StructureCalculator:
         self,
         structure: ase.atoms.Atoms,
         calculator: Type[WorkChain],
-        parameters: dict,
-        structure_keyword: tuple = ("structure"),
+        calculator_parameters: dict,
+        structure_keyword: tuple = ("structure",),
     ):
         self.structure = structure
         self.calculator = calculator
-        self.parameters = parameters
+        self.parameters = calculator_parameters
         self.structure_keyword = structure_keyword
         self.dynamic_structure = DynamicStructure(structure)
 

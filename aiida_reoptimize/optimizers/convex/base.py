@@ -1,5 +1,4 @@
 import numpy as np
-from aiida.engine import run
 from aiida.orm import Float, Int, List
 
 from ..OptimizerBase import _OptimizerBase
@@ -20,9 +19,17 @@ class _GDBase(_OptimizerBase):
 
     def initialize(self):
         """Initialize context variables and optimization parameters."""
+        # structural parameters
         self.ctx.parameters = np.array(
             self.inputs["parameters"]["initial_parameters"]
         )
+
+        # settings for calculators
+        self.ctx.calculator_parameters = (
+            self.inputs["parameters"]
+            .get("calculator_parameters", {})
+        )
+
         self.ctx.tolerance = (
             self.inputs["parameters"]
             .get("algorithm_settings", {})
@@ -34,13 +41,13 @@ class _GDBase(_OptimizerBase):
             self.inputs["parameters"]
             .get("algorithm_settings", {})
             .get("epsilon")
-            or 1e-10
+            or 1e-7
         )
         self.ctx.delta = (
             self.inputs["parameters"]
             .get("algorithm_settings", {})
             .get("delta")
-            or 1e-6
+            or 5e-4
         )
         self.ctx.converged = False
         self.ctx.iteration = 1
@@ -99,8 +106,10 @@ class _GDBase(_OptimizerBase):
         """Main optimization loop for SDG based algorithms."""
         while self.should_continue():
             targets = self.generate_targets()
-            results = run(self.evaluator_workchain, targets=targets)
-            self.ctx.raw_results = results["evaluation_results"]
+            raw_results = self.run_evaluator(
+                targets, calculator_parameters=self.ctx.calculator_parameters
+            )
+            self.ctx.raw_results = raw_results["evaluation_results"]
             self.ctx.results = self.extractor(self.ctx.raw_results)
             self.ctx.gradient = self.evaluate_gradient_numerically(
                 self.ctx.results
@@ -116,6 +125,15 @@ class _GDBase(_OptimizerBase):
             self.report(
                 f"Optimization converged after {self.ctx.iteration} iterations."  # noqa: E501
             )
+
+    def report_progress(self):
+        """Report the current progress of the optimization."""
+        self.report(
+            f"\nIteration {self.ctx.iteration}/{self.ctx.itmax}:\n"
+            f"Parameters: {self.ctx.parameters},\n"
+            f"Gradient norm: {np.linalg.norm(self.ctx.gradient)},\n"
+            f"Objective value: {self.ctx.results[0]}"
+        )
 
     def finalize(self):
         self.out(

@@ -16,7 +16,7 @@ class RMSpropOptimizer(_GDBase):
             .get("algorithm_settings", {})
             .get("learning_rate")
             or 1e-3
-        )  # noqa: E501
+        )
         self.ctx.rho = (
             self.inputs["parameters"].get("algorithm_settings", {}).get("rho")
             or 0.9
@@ -41,9 +41,7 @@ class RMSpropOptimizer(_GDBase):
             / np.sqrt(self.ctx.accumulated_grad_sq + self.ctx.epsilon)
             * gradient
         )
-        self.report(
-            f"\nIteration:{self.ctx.iteration}/{self.ctx.itmax},\nCurrent parameters is:{self.ctx.parameters}\nCurrent gradient norm is: {np.linalg.norm(gradient)}\nCurrent  target value is: {self.ctx.results[0]}"  # noqa: E501
-        )
+        self.report_progress()
         self.ctx.parameters -= step
         self.ctx.iteration += 1
 
@@ -56,13 +54,13 @@ class AdamOptimizer(_GDBase):
         self.ctx.learning_rate = (
             self.inputs["parameters"]
             .get("algorithm_settings", {})
-            .get("learning_rate", 1e-3)
+            .get("learning_rate", 5e-2)
         )
 
         self.ctx.beta1 = (
             self.inputs["parameters"]
             .get("algorithm_settings", {})
-            .get("beta1", 0.9)
+            .get("beta1", 0.5)
         )
 
         self.ctx.beta2 = (
@@ -103,8 +101,6 @@ class AdamOptimizer(_GDBase):
             self.ctx.converged = True
             return
 
-        self.report(
-            f"\nIteration:{self.ctx.iteration}/{self.ctx.itmax},\nCurrent parameters is:{self.ctx.parameters}\nCurrent gradient norm is: {np.linalg.norm(gradient)}\nCurrent  target value is: {self.ctx.results[0]}"  # noqa: E501
-        )
+        self.report_progress()
         self.ctx.parameters -= step
         self.ctx.iteration += 1
