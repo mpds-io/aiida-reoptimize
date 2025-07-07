@@ -21,7 +21,8 @@ class _GDBase(_OptimizerBase):
         """Initialize context variables and optimization parameters."""
         # structural parameters
         self.ctx.parameters = np.array(
-            self.inputs["parameters"]["initial_parameters"]
+            self.inputs["parameters"]["initial_parameters"],
+            dtype=np.float64,
         )
 
         # settings for calculators
