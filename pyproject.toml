@@ -1,6 +1,6 @@
 [project]
 name = "aiida-reoptimize"
-version = "0.5.0"
+version = "0.5.1"
 description = "Algorithms for external optimization of crystal structures"
 authors = [
     {name = "Anton Domnin",email = "a.v.daomnin@gmail.com"},
@@ -25,9 +25,16 @@ build-backend = "poetry.core.masonry.api"
 "aiida_reoptimize.BFGSFleurSCFOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurSCF:BFGSFleurSCFOptimizer"
 "aiida_reoptimize.PyMOOFleurSCFOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurSCF:PyMOOFleurSCFOptimizer"
 
+#Crystal23 optimizers
+"aiida_reoptimize.AdamCrystal23Optimizer" = "aiida_reoptimize.workflows.Optimization.Crystal23:AdamCrystal23Optimizer"
+"aiida_reoptimize.RMSpropCrystal23Optimizer" = "aiida_reoptimize.workflows.Optimization.Crystal23:RMSpropCrystal23Optimizer"
+"aiida_reoptimize.BFGSCrystal23Optimizer" = "aiida_reoptimize.workflows.Optimization.Crystal23:BFGSCrystal23Optimizer"
+"aiida_reoptimize.PyMOOCrystal23Optimizer" = "aiida_reoptimize.workflows.Optimization.Crystal23:PyMOOCrystal23Optimizer"
+
 # Evaluators
 "aiida_reoptimize.FleurSCFLatticeProblem" = "aiida_reoptimize.workflows.Evaluation.fleur_evaluators:FleurSCFLatticeProblem"
 "aiida_reoptimize.FleurRelaxLatticeProblem" = "aiida_reoptimize.workflows.Evaluation.fleur_evaluators:FleurRelaxLatticeProblem"
+"aiida_reoptimize.CrystalLatticeProblem" = "aiida_reoptimize.workflows.Evaluation.crystal23_evaluation:CrystalLatticeProblem" 
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.6.9"

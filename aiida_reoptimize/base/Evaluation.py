@@ -2,6 +2,7 @@ from typing import Type
 
 from aiida.engine import ToContext, WorkChain
 from aiida.orm import Dict, Int, List, StructureData, load_code, load_node
+from aiida.plugins import DataFactory
 
 from aiida_reoptimize.structure.dynamic_structure import StructureCalculator
 
@@ -149,16 +150,35 @@ class _StaticEvalStructureBase(WorkChain):
 
         loaded_codes = {}
         for key, value in code_dict.items():
-            try:  
-                if isinstance(value, str):  
-                    loaded_codes[key] = load_code(value)  
-                elif isinstance(value, int):  
-                    loaded_codes[key] = load_node(value)  
+            try:
+                if isinstance(value, str):
+                    loaded_codes[key] = load_code(value)
+                elif isinstance(value, int):
+                    loaded_codes[key] = load_node(value)
                 else:
-                    raise ValueError(f"Unsupported code format for {key}: {value}")
-            except Exception as e:  
+                    raise ValueError(
+                        f"Unsupported code format for {key}: {value}"
+                    )
+            except Exception as e:
                 raise ValueError(f"Failed to load code for {key}: {e}") from e
         return loaded_codes
+
+    def handle_basis_family(self, calculator_parameters):
+        """
+        Perform an action only if 'basis_family' is present in calculator_parameters.
+        """
+        basis_name = calculator_parameters.pop("basis_family", None)
+        if basis_name:
+            self.report(f"Handling given basis set {basis_name}")
+            try:
+                basis_family, _ = DataFactory(
+                    "crystal_dft.basis_family"
+                ).get_or_create(basis_name)
+            except Exception as e:
+                self.report(f"Error loading basis set {basis_name}: {e}")
+                raise e
+            calculator_parameters["basis_family"] = basis_family
+        return calculator_parameters
 
     def generate_structures(self):
         """
@@ -207,6 +227,7 @@ class StaticEvalLatticeProblem(_StaticEvalStructureBase):
         codes = calculator_parameters.pop("codes", {})
         loaded_codes = self.load_codes(codes)
         calculator_parameters.update(loaded_codes)
+        calculator_parameters = self.handle_basis_family(calculator_parameters)
 
         structure_calculator = StructureCalculator(
             structure=self.inputs.structure.get_ase(),
