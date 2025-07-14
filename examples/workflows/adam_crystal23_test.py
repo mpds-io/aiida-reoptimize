@@ -47,7 +47,7 @@ atoms = crystal(
 )
 
 optimizer_parameters = {
-    "itmax": Int(2),
+    "itmax": Int(100),
     "structure": StructureData(ase=atoms),
     "parameters": Dict({
         "algorithm_settings": {
