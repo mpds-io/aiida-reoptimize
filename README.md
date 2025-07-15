@@ -7,6 +7,13 @@
 
 `aiida-reoptimize` is a flexible framework for running advanced optimization workflows in computational materials science and chemistry, leveraging the AiiDA workflows and the PyMOO optimization library. It supports both lattice and atomic positions optimization and is designed for easy integration with external simulation codes and custom workflows.
 
+## Installation
+
+```sh
+git clone https://github.com/mpds-io/aiida-reoptimize.git
+cd aiida-reoptimize
+pip install .
+```
 
 ## Features
 
@@ -15,6 +22,18 @@
 - **Structure optimization**: Easily optimize lattice parameters or atomic positions using the `StructureCalculator` and structure-aware evaluators.
 - **Extensible**: allows adding custom optimizers, evaluators, or problem definitions without writing large amounts of code.
 
+## Important Usage Notes
+
+Dynamic vs. Static Workflows
+
+* **Dynamic workflows** (created via `OptimizerBuilder`):
+These allow you to flexibly combine optimizers, evaluators, and extractors at runtime. **However, they can only be used with the `run()` function (not `submit()`), because they are not importable by the AiiDA daemon.**
+This means they are suitable for interactive or short-running tasks, but not for long-running or daemon-managed workflows.
+
+* **Static workflows** (in [workflows](https://github.com/mpds-io/aiida-reoptimize/tree/master/aiida_reoptimize/workflows)):
+These are pre-defined, importable workflows registered as AiiDA entry points.
+**They can be used with both `run()` and `submit()` and are suitable for production, daemon-managed, or long-running tasks.**
+Currently available static workflows require you to specify the crystal structure as an input parameter (see below for details).
 
 ## Technical Details
 
@@ -38,16 +57,18 @@ Currently, two types of algorithms are implemented.
 
 These optimizers are implemented as AiiDA WorkChains:
 
-- **BFGSOptimizer**
-- **AdamOptimizer**
-- **RMSPropOptimizer**
+- **BFGS**
+- **Adam**
+- **RMSProp**
 
 ## Input parameters of the optimizers
 
-All implemented algorithms accept common input:
+All implemented algorithms accept the following common inputs:
 
-- `itmax` (Int): maximal number of iterations (default: `100`)
-- `parameters` (Dict): Dictionary that contains algorithms specific settings (in `algorithm_settings`, `Dict`) and additional parameters required for optimization
+- `itmax` (`Int`): Maximal number of iterations (default: `100`)
+- `parameters` (`Dict`): Dictionary containing algorithm-specific settings (in `algorithm_settings`, `Dict`) and additional parameters required for optimization
+- `get_best` (`Bool`, optional): Whether to return the best result node identifier (default: `True`)
+- `structure` (`StructureData`, optional): Chemical structure for the optimization (required for so-called static workflows)
 
 ### Convex algorithms
 
@@ -58,43 +79,55 @@ All convex optimizers accept the following parameters (passed as a `Dict` under 
 | `algorithm_settings`  | Dict    | Algorithm-specific settings (see below)                  |
 | `initial_parameters`  | List    | Initial guess for the parameters to optimize             |
 
-**Gradient descent based algorithms** (inside `algorithm_settings`):
-- `tolerance` (float): Convergence threshold for gradient norm (default: `1e-3`)
-- `epsilon` (float): Small value to avoid division by zero (default: `1e-10`)
-- `delta` (float): Step size for numerical gradient (default: `1e-6`)
+**Gradient descent-based algorithms** (`algorithm_settings`):
 
-**RMSProp-specific settings** (inside `algorithm_settings`):
-- `learning_rate` (float): Step size for parameter updates (default: `1e-3`)
-- `rho` (float): Decay rate for moving average (default: `0.9`)
+- `tolerance` (`float`): Convergence threshold for gradient norm (default: `1e-3`)
+- `epsilon` (`float`): Small value to avoid division by zero (default: `1e-7`)
+- `delta` (`float`): Step size for numerical gradient (default: `5e-4`)
 
-**Adam-specific settings** (inside `algorithm_settings`):
-- `learning_rate` (float): Step size for parameter updates (default: `1e-3`)
-- `beta1`, `beta2` (float): Exponential decay rates for moment estimates (default: `0.9`, `0.999`)
+**RMSProp-specific settings** (`algorithm_settings`):
 
-**BFGS-specific settings** (inside `algorithm_settings`):
-- `alpha` (float): Initial step size for the line search procedure, which influences the starting magnitude of parameter updates. A larger value may speed up convergence but risks overshooting, while a smaller value ensures stability at the cost of slower progress (default: `1.0`).
-- `beta` (float): Step size reduction factor (default: `0.5`)
-- `sigma` (float): Armijo/sufficient decrease parameter. This controls how much decrease in the objective function is considered "sufficient." (default: `1e-4`)
-- `linesearch_max_iter` (int): Maximum allowed steps in line search procedure (default: `20`)
+- `learning_rate` (`float`): Step size for parameter updates (default: `1e-3`)
+- `rho` (`float`): Decay rate for moving average (default: `0.9`)
+
+**Adam-specific settings** (`algorithm_settings`):
+
+- `learning_rate` (`float`): Step size for parameter updates (default: `5e-2`)
+- `beta1` (`float`): Exponential decay rate for the first moment estimates (default: `0.5`)
+- `beta2` (`float`): Exponential decay rate for the second moment estimates (default: `0.999`)
+
+**BFGS-specific settings** (`algorithm_settings`):
+
+- `alpha` (`float`): Initial step size for the line search (default: `1.0`)
+- `beta` (`float`): Step size reduction factor (default: `0.5`)
+- `sigma` (`float`): Armijo/sufficient decrease parameter (default: `1e-4`)
+- `linesearch_max_iter` (`int`): Maximum allowed steps in line search (default: `20`)
+
+---
 
 ### Algorithms provided by PyMOO library
 
-`PyMOO_Optimizer` class requires the following parameters to be specified as an input:
-- `parameters` (Dict): Contain `algorithm_settings` dict and other parameters (see below);
-- `itmax` (Int): Maximal number of iterations;
-- `algorithm_name` (Str): Name of algorithm required for optimization. `aiida-reoptimize` currently supports:
-  - `DE` (Differential Evolution): A population-based optimization algorithm suitable for non-linear and non-differentiable functions. [Learn more](https://pymoo.org/algorithms/soo/de.html)
-  - `ES` (Evolution Strategy): A stochastic optimization method inspired by natural evolution. [Learn more](https://pymoo.org/algorithms/soo/es.html)
-  - `GA` (Genetic Algorithm): A heuristic search algorithm based on the principles of genetics and natural selection. [Learn more](https://pymoo.org/algorithms/soo/ga.html)
-  - `G3PCX` (Generalized Generation Gap with Parent-Centric Crossover): An advanced evolutionary algorithm for complex optimization problems. [Learn more](https://pymoo.org/algorithms/soo/g3pcx.html)
-  - `PSO` (Particle Swarm Optimization): A computational method that optimizes a problem by iteratively improving candidate solutions based on the movement of particles. [Learn more](https://pymoo.org/algorithms/soo/pso.html)
+The `PyMOO_Optimizer` class requires the following parameters as input:
 
-Common parameters for optimization algorithms implemented via PyMOO library (inside the `parameters` dict):
-- `bounds` (List): List of lists, where each inner list contains the minimum and maximum allowed values for a single optimization variable;
-- `dimensions` (Int): Specifies the number of variables or dimensions in the optimization problem, defining the size of the search space.
+- `itmax` (`Int`): Maximal number of iterations
+- `algorithm_name` (`Str`): Name of the PyMOO algorithm to use (see below)
+- `parameters` (`Dict`): Contains `algorithm_settings` and other required parameters
 
-When using optimizers implemented via the PyMOO library, you can customize the algorithm behavior by providing algorithm-specific keywords in the `algorithm_settings` dictionary.
-The following keywords are supported for each algorithm:
+**Inside `parameters` (`Dict`):**
+
+- `algorithm_settings` (`Dict`): Algorithm-specific settings (see below)
+- `bounds` (`List`): List of [min, max] for each variable
+- `dimensions` (`Int`): Number of variables to optimize
+
+**Supported PyMOO algorithms (`algorithm_name`):**
+
+- `DE` (Differential Evolution)
+- `ES` (Evolution Strategy)
+- `GA` (Genetic Algorithm)
+- `G3PCX` (Generalized Generation Gap with Parent-Centric Crossover)
+- `PSO` (Particle Swarm Optimization)
+
+**Algorithm-specific settings** (inside `algorithm_settings`):
 
 - **DE**: `pop_size`, `n_offsprings`, `sampling`, `variant`
 - **ES**: `pop_size`, `n_offsprings`, `rule`, `phi`, `gamma`, `sampling`
@@ -109,69 +142,20 @@ When specifying operators such as `sampling`, `selection`, `crossover`, `mutatio
 **you should use the name of the operator as a string** (e.g., `"SBX"`, `"FRS"`, `"TOS"`),  
 **not** an instance of the operator class.
 
-For example:
+**Example:**
 
 ```python
 parameters = Dict({
     "algorithm_name": "GA",
     "algorithm_settings": {
         "pop_size": 50,
-        "sampling": "LHS",         # Use "LHS" (Latin Hypercube Sampling) instead of LHS()
-        "crossover": "SBX",        # Use "SBX" instead of SBX()
-        "mutation": "PM",          # Use "PM" instead of PolynomialMutation()
-        "selection": "TOS"         # Use "TOS" instead of TournamentSelection()
+        "sampling": "LHS",         # Use "LHS" (Latin Hypercube Sampling)
+        "crossover": "SBX",        # Use "SBX"
+        "mutation": "PM",          # Use "PM"
+        "selection": "TOS"         # Use "TOS"
     },
-    ...
-})
-```
-
-
-## Installation
-
-```sh
-git clone https://github.com/mpds-io/aiida-reoptimize.git
-cd aiida-reoptimize
-pip install .
-```
-
-
-## Usage
-
-### 1. Define Your Problem
-
-For a simple function optimization:
-```python
-from aiida_reoptimize.problems.problems import Sphere
-```
-
-### 2. Build an Optimizer Pipeline
-
-```python
-from aiida_reoptimize.base.OptimizerBuilder import OptimizerBuilder
-from aiida_reoptimize.optimizers.convex.QN import BFGSOptimizer
-
-builder = OptimizerBuilder.from_problem(
-    optimizer_workchain=BFGSOptimizer,
-    problem_workchain=Sphere,
-    extractor=lambda x: x["value"],
-)
-optimizer = builder.get_optimizer()
-```
-
-### 3. Run the Optimization
-
-```python
-from aiida.engine import run
-from aiida.orm import Dict, Int, List
-
-optimizer_parameters = {
-    "itmax": Int(20),
-    "parameters": Dict({
-        "algorithm_settings": {"tolerance": 1e-8},
-        "initial_parameters": List([0.1, -0.3, 0.7]),
-    })
-}
-results = run(optimizer, **optimizer_parameters)
+    "bounds": [[0, 1], [0, 1]],
+    "dimensions": 2
 ```
 
 
