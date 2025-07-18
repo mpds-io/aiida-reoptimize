@@ -104,3 +104,50 @@ class AdamOptimizer(_GDBase):
         self.report_progress()
         self.ctx.parameters -= step
         self.ctx.iteration += 1
+
+
+class ConjugateGradientOptimizer(_GDBase):
+    """
+    Conjugate Gradient Descent optimizer (Polak–Ribiere version).
+    """
+
+    def initialize(self):
+        super().initialize()
+        self.ctx.prev_gradient = np.zeros_like(self.ctx.parameters)
+        self.ctx.direction = np.zeros_like(self.ctx.parameters)
+        self.ctx.learning_rate = (
+            self.inputs["parameters"]
+            .get("algorithm_settings", {})
+            .get("learning_rate")
+            or 1e-2
+        )
+
+    def update_parameters(self, gradient: np.array):
+        """Update parameters using Conjugate Gradient Descent (Polak–Ribiere)."""
+        self.record_history(
+            parameters=self.ctx.parameters,
+            gradient=gradient,
+            value=self.ctx.results[0],
+        )
+
+        if self.ctx.iteration == 1:
+            # using steepest descent
+            self.ctx.direction = gradient
+        else:
+            # Polak–Ribiere beta (check if it`s optimal way)
+            y = gradient - self.ctx.prev_gradient
+            beta = np.dot(gradient, y) / (np.dot(self.ctx.prev_gradient, self.ctx.prev_gradient) + self.ctx.epsilon)
+            beta = max(beta, 0)  # Ensure beta >= 0
+            self.ctx.direction = gradient - beta * self.ctx.direction
+
+        step = self.ctx.learning_rate * self.ctx.direction
+
+        if np.any(np.isnan(step)) or np.any(np.isinf(step)):
+            self.report("Aborting: Invalid step (NaN/Inf detected).")
+            self.ctx.converged = True
+            return
+
+        self.report_progress()
+        self.ctx.parameters -= step  # move along direction negative gradient for descent.
+        self.ctx.prev_gradient = gradient.copy()
+        self.ctx.iteration += 1
