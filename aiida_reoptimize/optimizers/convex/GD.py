@@ -108,7 +108,7 @@ class AdamOptimizer(_GDBase):
 
 class ConjugateGradientOptimizer(_GDBase):
     """
-    Conjugate Gradient Descent optimizer (Polak–Ribiere version).
+    Conjugate Gradient Descent optimizer (Polak–Ribiere version) with dynamic learning rate.
     """
 
     def initialize(self):
@@ -119,11 +119,36 @@ class ConjugateGradientOptimizer(_GDBase):
             self.inputs["parameters"]
             .get("algorithm_settings", {})
             .get("learning_rate")
-            or 1e-2
+            or 1e-1
         )
+        self.ctx.lr_min = (
+            self.inputs["parameters"]
+            .get("algorithm_settings", {})
+            .get("lr_min")
+            or 1e-6
+        )
+        self.ctx.lr_max = (
+            self.inputs["parameters"]
+            .get("algorithm_settings", {})
+            .get("lr_max")
+            or 1.0
+        )
+        self.ctx.lr_increase = (
+            self.inputs["parameters"]
+            .get("algorithm_settings", {})
+            .get("lr_increase")
+            or 1.05
+        )
+        self.ctx.lr_decrease = (
+            self.inputs["parameters"]
+            .get("algorithm_settings", {})
+            .get("lr_decrease")
+            or 0.5
+        )
+        self.ctx.prev_value = None
 
     def update_parameters(self, gradient: np.array):
-        """Update parameters using Conjugate Gradient Descent (Polak–Ribiere)."""
+        """Update parameters using Conjugate Gradient Descent (Polak–Ribiere) with dynamic learning rate."""
         self.record_history(
             parameters=self.ctx.parameters,
             gradient=gradient,
@@ -131,13 +156,11 @@ class ConjugateGradientOptimizer(_GDBase):
         )
 
         if self.ctx.iteration == 1:
-            # using steepest descent
             self.ctx.direction = gradient
         else:
-            # Polak–Ribiere beta (check if it`s optimal way)
             y = gradient - self.ctx.prev_gradient
             beta = np.dot(gradient, y) / (np.dot(self.ctx.prev_gradient, self.ctx.prev_gradient) + self.ctx.epsilon)
-            beta = max(beta, 0)  # Ensure beta >= 0
+            beta = max(beta, 0)
             self.ctx.direction = gradient - beta * self.ctx.direction
 
         step = self.ctx.learning_rate * self.ctx.direction
@@ -147,7 +170,25 @@ class ConjugateGradientOptimizer(_GDBase):
             self.ctx.converged = True
             return
 
-        self.report_progress()
-        self.ctx.parameters -= step  # move along direction negative gradient for descent.
-        self.ctx.prev_gradient = gradient.copy()
+        # Save current value before update
+        current_value = self.ctx.results[0]
+        prev_parameters = self.ctx.parameters.copy()
+
+        self.ctx.parameters -= step
         self.ctx.iteration += 1
+
+        # After update, check new value and adjust learning rate
+        # (Assume self.ctx.results[0] will be updated externally after this call)
+        if self.ctx.prev_value is not None:
+            if current_value < self.ctx.prev_value:
+                # if target value is improvemed: increase learning rate
+                self.ctx.learning_rate = min(self.ctx.learning_rate * self.ctx.lr_increase, self.ctx.lr_max)
+            else:
+                # If no improvement: decrease learning rate and revert step
+                self.ctx.learning_rate = max(self.ctx.learning_rate * self.ctx.lr_decrease, self.ctx.lr_min)
+                self.ctx.parameters = prev_parameters  # revert update
+        
+        self.report(f"Iteration {self.ctx.iteration}: Learning rate = {self.ctx.learning_rate:.6f}, Step = {step}")
+        self.ctx.prev_value = current_value
+        self.ctx.prev_gradient = gradient.copy()
+        self.report_progress()
