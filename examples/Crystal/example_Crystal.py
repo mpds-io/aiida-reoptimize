@@ -47,7 +47,7 @@ options = DataFactory("dict")(
 )
 
 inputs = {
-    "code": load_code("Pcrystal23@yascheduler"),
+    "code": load_code("Pcrystal@yascheduler"),
     "parameters": calculation_settings,
     "basis_family": basis_family,
     "options": options,
@@ -56,7 +56,7 @@ inputs = {
 dummy_extractor = BasicExtractor(
     node_extractor=lambda x: x["output_parameters"]["energy"]
 )
-# 
+#
 builder = OptimizerBuilder.from_MPDS(
     optimizer_workchain=AdamOptimizer,
     calculator_workchain=BaseCrystalWorkChain,
@@ -64,11 +64,11 @@ builder = OptimizerBuilder.from_MPDS(
     calculator_parameters=inputs,
     mpds_query="SrTiO3/221",
 )
-# 
+#
 # Setup lattice parameters
 # TODO find a better way to get these parameters
 a = 3.905
-# 
+#
 optimizer_parameters = {
     "itmax": Int(100),
     "parameters": Dict({
@@ -76,6 +76,6 @@ optimizer_parameters = {
         "initial_parameters": List([a]),
     }),
 }
-# 
+#
 optimizer = builder.get_optimizer()
 results = run(optimizer, **optimizer_parameters)

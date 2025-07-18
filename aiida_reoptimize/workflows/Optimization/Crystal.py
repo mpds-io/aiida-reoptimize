@@ -2,27 +2,27 @@ from ...base.Extractors import BasicExtractor
 from ...optimizers.convex.GD import AdamOptimizer, RMSpropOptimizer
 from ...optimizers.convex.QN import BFGSOptimizer
 from ...optimizers.PyMOO.PyMOO import PyMOO_Optimizer
-from ..Evaluation.crystal23_evaluation import CrystalLatticeProblem
+from ..Evaluation.crystal_evaluation import CrystalLatticeProblem
 
 
-class BaseCrystal23Optimizer:
+class BaseCrystalOptimizer:
     evaluator_workchain = CrystalLatticeProblem
     extractor = BasicExtractor(
         node_extractor=lambda x: x["output_parameters"]["energy"]
     )
 
 
-class AdamCrystal23Optimizer(BaseCrystal23Optimizer, AdamOptimizer):
+class AdamCrystalOptimizer(BaseCrystalOptimizer, AdamOptimizer):
     pass
 
 
-class RMSpropCrystal23Optimizer(BaseCrystal23Optimizer, RMSpropOptimizer):
+class RMSpropCrystalOptimizer(BaseCrystalOptimizer, RMSpropOptimizer):
     pass
 
 
-class BFGSFCrystal23Optimizer(BaseCrystal23Optimizer, BFGSOptimizer):
+class BFGSFCrystalOptimizer(BaseCrystalOptimizer, BFGSOptimizer):
     pass
 
 
-class PyMOOCrystal23Optimizer(BaseCrystal23Optimizer, PyMOO_Optimizer):
+class PyMOOCrystalOptimizer(BaseCrystalOptimizer, PyMOO_Optimizer):
     pass
