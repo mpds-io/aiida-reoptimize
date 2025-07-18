@@ -3,8 +3,8 @@ from aiida.engine import submit
 from aiida.orm import Dict, Int, List, StructureData
 from ase.spacegroup import crystal
 
-from aiida_reoptimize.workflows.Optimization.Crystal23 import (
-    AdamCrystal23Optimizer,
+from aiida_reoptimize.workflows.Optimization.Crystal import (
+    AdamCrystalOptimizer,
 )
 
 load_profile()
@@ -59,7 +59,7 @@ optimizer_parameters = {
         },
         "initial_parameters": List([a, c]),
         "calculator_parameters": {
-            "codes": {"code": "Pcrystal23@yascheduler"},
+            "codes": {"code": "Pcrystal@yascheduler"},
             "parameters": calculation_settings,
             "basis_family": basis_name,
             "options": options,
@@ -67,5 +67,5 @@ optimizer_parameters = {
     }),
 }
 
-results = submit(AdamCrystal23Optimizer, **optimizer_parameters)
-print(f"Submitted AdamCrystal23Optimizer: {results.pk}")
+results = submit(AdamCrystalOptimizer, **optimizer_parameters)
+print(f"Submitted AdamCrystalOptimizer: {results.pk}")
