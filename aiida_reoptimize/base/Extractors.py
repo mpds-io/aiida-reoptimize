@@ -28,3 +28,7 @@ class BasicExtractor:
                     pass
             values.append(value)
         return values
+
+    def get_penalty(self):
+        """Return the penalty value."""
+        return self.penalty

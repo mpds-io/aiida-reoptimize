@@ -17,6 +17,12 @@ class _GDBase(_OptimizerBase):
             message="Optimization did not converge within the maximum iterations.",  # noqa: E501
         )
 
+        spec.exit_code(
+            401,
+            "ERROR_NO_VALID_SOLUTION",
+            message="Optimization failed to find a valid solution.",
+        )
+
     def initialize(self):
         """Initialize context variables and optimization parameters."""
         # structural parameters
@@ -26,9 +32,8 @@ class _GDBase(_OptimizerBase):
         )
 
         # settings for calculators
-        self.ctx.calculator_parameters = (
-            self.inputs["parameters"]
-            .get("calculator_parameters", {})
+        self.ctx.calculator_parameters = self.inputs["parameters"].get(
+            "calculator_parameters", {}
         )
 
         self.ctx.tolerance = (
@@ -48,7 +53,7 @@ class _GDBase(_OptimizerBase):
             self.inputs["parameters"]
             .get("algorithm_settings", {})
             .get("delta")
-            or 5e-4
+            or 1e-6
         )
         self.ctx.converged = False
         self.ctx.iteration = 1
@@ -137,6 +142,9 @@ class _GDBase(_OptimizerBase):
         )
 
     def finalize(self):
+        if self.ctx.results[0] == self.extractor.get_penalty():
+            return self.exit_codes.ERROR_NO_VALID_SOLUTION
+
         self.out(
             "optimized_parameters",
             List(list=self.ctx.parameters.tolist()).store(),

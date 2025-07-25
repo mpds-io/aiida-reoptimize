@@ -1,5 +1,5 @@
 from aiida import load_profile
-from aiida.engine import submit, run
+from aiida.engine import submit
 from aiida.orm import Dict, Int, List, StructureData
 from ase.spacegroup import crystal
 
@@ -65,5 +65,5 @@ optimizer_parameters = {
     }),
 }
 
-results = run(CDGCrystalOptimizer, **optimizer_parameters)
-# print(f"Submitted CDGCrystalOptimizer: {results.pk}")
+results = submit(CDGCrystalOptimizer, **optimizer_parameters)
+print(f"Submitted CDGCrystalOptimizer: {results.pk}")
