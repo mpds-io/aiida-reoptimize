@@ -119,13 +119,13 @@ class ConjugateGradientOptimizer(_GDBase):
             self.inputs["parameters"]
             .get("algorithm_settings", {})
             .get("learning_rate")
-            or 1e-1
+            or 1e-2
         )
         self.ctx.lr_min = (
             self.inputs["parameters"]
             .get("algorithm_settings", {})
             .get("lr_min")
-            or 1e-6
+            or 1e-8
         )
         self.ctx.lr_max = (
             self.inputs["parameters"]
@@ -137,7 +137,7 @@ class ConjugateGradientOptimizer(_GDBase):
             self.inputs["parameters"]
             .get("algorithm_settings", {})
             .get("lr_increase")
-            or 1.05
+            or 1.1
         )
         self.ctx.lr_decrease = (
             self.inputs["parameters"]
@@ -146,6 +146,35 @@ class ConjugateGradientOptimizer(_GDBase):
             or 0.5
         )
         self.ctx.prev_value = None
+        self.ctx._pending_lr_adjustment = None
+
+    def optimization_process(self):
+        """Main optimization loop for Conjugate Gradient Descent with dynamic learning rate."""
+        while self.should_continue():
+            targets = self.generate_targets()
+            raw_results = self.run_evaluator(
+                targets, calculator_parameters=self.ctx.calculator_parameters
+            )
+            self.ctx.raw_results = raw_results["evaluation_results"]
+            self.ctx.results = self.extractor(self.ctx.raw_results)
+
+            # Adjust learning rate and possibly revert step after new objective value is available
+            self.adjust_learning_rate_after_objective()
+
+            self.ctx.gradient = self.evaluate_gradient_numerically(
+                self.ctx.results
+            )
+            self.update_parameters(self.ctx.gradient)
+
+        if not self.ctx.converged:
+            self.report(
+                f"Optimization did not converge after {self.ctx.itmax} iterations."
+            )
+            return self.exit_codes.ERROR_MAX_ITERATIONS
+        else:
+            self.report(
+                f"Optimization converged after {self.ctx.iteration} iterations."
+            )
 
     def update_parameters(self, gradient: np.array):
         """Update parameters using Conjugate Gradient Descent (Polak–Ribiere) with dynamic learning rate."""
@@ -155,13 +184,17 @@ class ConjugateGradientOptimizer(_GDBase):
             value=self.ctx.results[0],
         )
 
-        if self.ctx.iteration == 1:
-            self.ctx.direction = gradient
+        # CGD restart every N iterations
+        restart_interval = 10
+        if self.ctx.iteration == 1 or self.ctx.iteration % restart_interval == 0:
+            self.report("Restarting CGD direction.")
+            self.ctx.direction = -gradient
         else:
             y = gradient - self.ctx.prev_gradient
-            beta = np.dot(gradient, y) / (np.dot(self.ctx.prev_gradient, self.ctx.prev_gradient) + self.ctx.epsilon)
+            denom = np.dot(self.ctx.prev_gradient, self.ctx.prev_gradient) + self.ctx.epsilon
+            beta = np.dot(gradient, y) / denom if denom > 1e-12 else 0.0
             beta = max(beta, 0)
-            self.ctx.direction = gradient - beta * self.ctx.direction
+            self.ctx.direction = -gradient + beta * self.ctx.direction
 
         step = self.ctx.learning_rate * self.ctx.direction
 
@@ -170,25 +203,38 @@ class ConjugateGradientOptimizer(_GDBase):
             self.ctx.converged = True
             return
 
-        # Save current value before update
-        current_value = self.ctx.results[0]
+        # Save current value and parameters before update
+        prev_value = self.ctx.results[0]
         prev_parameters = self.ctx.parameters.copy()
 
-        self.ctx.parameters -= step
+        self.ctx.parameters += step
         self.ctx.iteration += 1
 
-        # After update, check new value and adjust learning rate
-        # (Assume self.ctx.results[0] will be updated externally after this call)
-        if self.ctx.prev_value is not None:
-            if current_value < self.ctx.prev_value:
-                # if target value is improvemed: increase learning rate
-                self.ctx.learning_rate = min(self.ctx.learning_rate * self.ctx.lr_increase, self.ctx.lr_max)
-            else:
-                # If no improvement: decrease learning rate and revert step
-                self.ctx.learning_rate = max(self.ctx.learning_rate * self.ctx.lr_decrease, self.ctx.lr_min)
-                self.ctx.parameters = prev_parameters  # revert update
-        
+        # Defer learning rate adjustment until after new objective value is available
+        self.ctx._pending_lr_adjustment = {
+            "prev_value": prev_value,
+            "prev_parameters": prev_parameters,
+        }
+
         self.report(f"Iteration {self.ctx.iteration}: Learning rate = {self.ctx.learning_rate:.6f}, Step = {step}")
-        self.ctx.prev_value = current_value
         self.ctx.prev_gradient = gradient.copy()
         self.report_progress()
+
+    def adjust_learning_rate_after_objective(self):
+        """Call this after the new objective value is available."""
+        if not self.ctx._pending_lr_adjustment:
+            return
+
+        prev_value = self.ctx._pending_lr_adjustment["prev_value"]
+        prev_parameters = self.ctx._pending_lr_adjustment["prev_parameters"]
+        current_value = self.ctx.results[0]
+
+        if prev_value is not None:
+            if current_value < prev_value:
+                self.ctx.learning_rate = min(self.ctx.learning_rate * self.ctx.lr_increase, self.ctx.lr_max)
+            else:
+                self.ctx.learning_rate = max(self.ctx.learning_rate * self.ctx.lr_decrease, self.ctx.lr_min)
+                self.ctx.parameters = prev_parameters  # revert update
+
+        self.ctx.prev_value = current_value
+        self.ctx._pending_lr_adjustment = None
