@@ -203,9 +203,10 @@ class ConjugateGradientOptimizer(_GDBase):
             self.ctx.converged = True
             return
 
-        # Save current value and parameters before update
+        # Save current value, parameters, and prev_gradient before update
         prev_value = self.ctx.results[0]
         prev_parameters = self.ctx.parameters.copy()
+        prev_prev_gradient = self.ctx.prev_gradient.copy()
 
         self.ctx.parameters += step
         self.ctx.iteration += 1
@@ -214,6 +215,7 @@ class ConjugateGradientOptimizer(_GDBase):
         self.ctx._pending_lr_adjustment = {
             "prev_value": prev_value,
             "prev_parameters": prev_parameters,
+            "prev_prev_gradient": prev_prev_gradient,
         }
 
         self.report(f"Iteration {self.ctx.iteration}: Learning rate = {self.ctx.learning_rate:.6f}, Step = {step}")
@@ -227,14 +229,20 @@ class ConjugateGradientOptimizer(_GDBase):
 
         prev_value = self.ctx._pending_lr_adjustment["prev_value"]
         prev_parameters = self.ctx._pending_lr_adjustment["prev_parameters"]
+        prev_prev_gradient = self.ctx._pending_lr_adjustment["prev_prev_gradient"]
         current_value = self.ctx.results[0]
 
         if prev_value is not None:
+            # if results improved, increase learning rate
             if current_value < prev_value:
+                self.ctx.prev_value = current_value
                 self.ctx.learning_rate = min(self.ctx.learning_rate * self.ctx.lr_increase, self.ctx.lr_max)
+            # else, decrease learning rate and revert step
             else:
                 self.ctx.learning_rate = max(self.ctx.learning_rate * self.ctx.lr_decrease, self.ctx.lr_min)
                 self.ctx.parameters = prev_parameters  # revert update
+                self.ctx.prev_gradient = prev_prev_gradient.copy()  # revert prev_gradient
+                self.ctx.gradient = self.ctx.prev_gradient.copy()  # revert current gradient
+                self.ctx.prev_value = prev_value
 
-        self.ctx.prev_value = current_value
         self.ctx._pending_lr_adjustment = None
