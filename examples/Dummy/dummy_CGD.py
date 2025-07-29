@@ -24,16 +24,17 @@ class ExampleCGD(ConjugateGradientOptimizer):
 
 
 parameters = Dict({
-    "initial_parameters": List([0.3, -0.2, -0.4]),
+    "initial_parameters": List([0.1, -0.1, -0.1]),
     "algorithm_settings": {
         "learning_rate": 1e-2,
         "lr_increase": 1.2,
+        "tolerance": 1e-1,
         }
 })
 
 __parameters = Dict(
     dict={
-        "itmax": Int(100),
+        "itmax": Int(20),
         "parameters": parameters,
     }
 )
