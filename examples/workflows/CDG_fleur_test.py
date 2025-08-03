@@ -72,4 +72,4 @@ optimizer_parameters = {
 }
 
 results = submit(CDGFleurSCFOptimizer, **optimizer_parameters)
-print(f"Submitted AdamFleurSCFOptimizer: {results.pk}")
+print(f"Submitted CDGFleurSCFOptimizer: {results.pk}")
