@@ -90,9 +90,7 @@ class AdamOptimizer(_GDBase):
         v_hat = self.ctx.v / (1 - self.ctx.beta2**self.ctx.iteration)
 
         denominator = np.sqrt(v_hat) + self.ctx.epsilon
-        denominator[denominator <= 0] = (
-            self.ctx.epsilon
-        )  # must be positive
+        denominator[denominator <= 0] = self.ctx.epsilon  # must be positive
 
         step = self.ctx.learning_rate * m_hat / denominator
 
@@ -116,6 +114,7 @@ class ConjugateGradientOptimizer(_GDBase):
         self.ctx.prev_gradient = np.zeros_like(self.ctx.parameters)
         self.ctx.direction = np.zeros_like(self.ctx.parameters)
         self.ctx.prev_value = None
+        self.ctx.stuck_counter = 0
 
         self.ctx.learning_rate = (
             self.inputs["parameters"]
@@ -154,31 +153,24 @@ class ConjugateGradientOptimizer(_GDBase):
             or 10
         )
 
-    def optimization_process(self):
-        """Main optimization loop for Conjugate Gradient Descent with dynamic learning rate."""
-        while self.should_continue():
-            targets = self.generate_targets()
-            raw_results = self.run_evaluator(
-                targets, calculator_parameters=self.ctx.calculator_parameters
-            )
-            self.ctx.raw_results = raw_results["evaluation_results"]
-            self.ctx.results = self.extractor(self.ctx.raw_results)
-
-            self.ctx.gradient = self.evaluate_gradient_numerically(
-                self.ctx.results
-            )
-
-            self.update_parameters(self.ctx.gradient)
-
-        if not self.ctx.converged:
-            self.report(
-                f"Optimization did not converge after {self.ctx.itmax} iterations."
-            )
-            return self.exit_codes.ERROR_MAX_ITERATIONS
-        else:
-            self.report(
-                f"Optimization converged after {self.ctx.iteration} iterations."
-            )
+        self.ctx.allowing_jumps = (
+            self.inputs["parameters"]
+            .get("algorithm_settings", {})
+            .get("allowing_jumps")
+            or True
+        )
+        self.ctx.allowed_stuck_iterations = (
+            self.inputs["parameters"]
+            .get("algorithm_settings", {})
+            .get("allowed_stuck_iterations")
+            or 7
+        )
+        self.ctx.allowed_stuck_before_restart_direction = (
+            self.inputs["parameters"]
+            .get("algorithm_settings", {})
+            .get("allowed_stuck_before_restart_direction")
+            or 3
+        )
 
     def update_parameters(self, gradient: np.array):
         """Update parameters using Conjugate Gradient Descent (Polak–Ribiere) with dynamic learning rate."""
@@ -199,11 +191,37 @@ class ConjugateGradientOptimizer(_GDBase):
                 self.report("Reversing CGD step.")
                 self.ctx.parameters = self.ctx.prev_parameters.copy()
                 self.ctx.learning_rate = max(
-                    self.ctx.learning_rate * self.ctx.lr_decrease, self.ctx.lr_min
+                    self.ctx.learning_rate * self.ctx.lr_decrease,
+                    self.ctx.lr_min,
                 )
+                self.ctx.stuck_counter += 1
+                if (
+                    self.ctx.stuck_counter
+                    > self.ctx.allowed_stuck_before_restart_direction
+                ):
+                    self.report(
+                        "Stuck for too long, restarting CGD direction."
+                    )
+                    self.ctx.direction = -gradient
+                if (
+                    self.ctx.stuck_counter == self.ctx.allowed_stuck_iterations
+                    and self.ctx.allowing_jumps
+                ):
+                    self.report("Allowing jump in CGD direction.")
+                    self.ctx.parameters += np.random.uniform(
+                        -0.1, 0.1, size=self.ctx.parameters.shape
+                    )
+                    self.ctx.stuck_counter = 0
+
+                if self.ctx.learning_rate == self.ctx.lr_min:
+                    self.report("Aborting: Too many stuck iterations.")
+                    self.ctx.converged = True
+                    return
             else:
+                self.ctx.stuck_counter = 0
                 self.ctx.learning_rate = min(
-                    self.ctx.learning_rate * self.ctx.lr_increase, self.ctx.lr_max
+                    self.ctx.learning_rate * self.ctx.lr_increase,
+                    self.ctx.lr_max,
                 )
                 self.ctx.prev_value = self.ctx.results[0]
                 self.ctx.prev_parameters = self.ctx.parameters.copy()
@@ -213,8 +231,13 @@ class ConjugateGradientOptimizer(_GDBase):
                     self.ctx.direction = -gradient
                 else:
                     y = gradient - self.ctx.prev_gradient
-                    denom = np.dot(self.ctx.prev_gradient, self.ctx.prev_gradient) + self.ctx.epsilon
-                    beta = np.dot(gradient, y) / denom if denom > 1e-12 else 0.0
+                    denom = (
+                        np.dot(self.ctx.prev_gradient, self.ctx.prev_gradient)
+                        + self.ctx.epsilon
+                    )
+                    beta = (
+                        np.dot(gradient, y) / denom if denom > 1e-12 else 0.0
+                    )
                     beta = max(beta, 0)
                     self.ctx.direction = -gradient + beta * self.ctx.direction
 
@@ -230,5 +253,7 @@ class ConjugateGradientOptimizer(_GDBase):
         # Save current value, parameters, and prev_gradient before update
         self.ctx.parameters += step
         self.ctx.iteration += 1
-        self.report(f"Iteration {self.ctx.iteration}: Learning rate = {self.ctx.learning_rate:.6f}, Step = {step}")
+        self.report(
+            f"Iteration {self.ctx.iteration}: Learning rate = {self.ctx.learning_rate:.6f}, Step = {step}"
+        )
         self.report_progress()
