@@ -20,7 +20,7 @@ calculation_settings = {
             "numerical": {"TOLLDENS": 8, "TOLLGRID": 16},
         },
         "numerical": {
-            "TOLDEE": 6,
+            "TOLDEE": 8,
             "BIPOSIZE": 256000000,
             "EXCHSIZE": 256000000,
             "MAXCYCLE": 200,
@@ -36,8 +36,8 @@ options = {
 }
 
 # Setup structure
-a = 5.51
-c = 7.81
+a = 5.53
+c = 7.84
 
 atoms = crystal(
     ["Sr", "Ti", "O", "O"],
@@ -47,13 +47,15 @@ atoms = crystal(
 )
 
 optimizer_parameters = {
-    "itmax": Int(10),
+    "itmax": Int(100),
     "structure": StructureData(ase=atoms),
     "parameters": Dict({
         "algorithm_settings": {
-            "tolerance": 1e-2,
+            "tolerance": 1e-1,
             "learning_rate": 1e-2,
             "lr_increase": 1.2,
+            "lr_decrease": 0.2,
+            "delta": 0.0000529177,
         },
         "initial_parameters": List([a, c]),
         "calculator_parameters": {
