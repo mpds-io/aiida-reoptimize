@@ -163,7 +163,7 @@ class ConjugateGradientOptimizer(_GDBase):
             self.inputs["parameters"]
             .get("algorithm_settings", {})
             .get("allowed_stuck_iterations")
-            or 7
+            or 4
         )
         self.ctx.allowed_stuck_before_restart_direction = (
             self.inputs["parameters"]
@@ -179,6 +179,7 @@ class ConjugateGradientOptimizer(_GDBase):
             gradient=gradient,
             value=self.ctx.results[0],
         )
+        # if it is the first iteration, initialize direction
         if self.ctx.prev_value is None:
             self.ctx.prev_value = self.ctx.results[0]
             self.ctx.prev_parameters = self.ctx.parameters.copy()
@@ -186,6 +187,9 @@ class ConjugateGradientOptimizer(_GDBase):
             self.ctx.direction = -gradient
             self.report("Starting CGD direction.")
         else:
+            # Check if the current result is worse than the previous one
+            # If so, reverse the step and adjust learning rate.
+            # We also counting stuck iterations, so we wont stay at same point for too long.
             if self.ctx.results[0] > self.ctx.prev_value:
                 # self.ctx.direction does not changes
                 self.report("Reversing CGD step.")
@@ -195,6 +199,7 @@ class ConjugateGradientOptimizer(_GDBase):
                     self.ctx.lr_min,
                 )
                 self.ctx.stuck_counter += 1
+                # If we are stuck for too long, we will restart CGD direction
                 if (
                     self.ctx.stuck_counter
                     > self.ctx.allowed_stuck_before_restart_direction
@@ -203,20 +208,34 @@ class ConjugateGradientOptimizer(_GDBase):
                         "Stuck for too long, restarting CGD direction."
                     )
                     self.ctx.direction = -gradient
-                if (
-                    self.ctx.stuck_counter == self.ctx.allowed_stuck_iterations
-                    and self.ctx.allowing_jumps
-                ):
-                    self.report("Allowing jump in CGD direction.")
-                    self.ctx.parameters += np.random.uniform(
-                        -0.1, 0.1, size=self.ctx.parameters.shape
-                    )
-                    self.ctx.stuck_counter = 0
-
+                # if we a still stucked for, we change the current point or abort optimization
+                # if we are allowed to jump, we will change the current point
+                # otherwise we will abort the optimization
+                if self.ctx.stuck_counter == self.ctx.allowed_stuck_iterations:
+                    if self.ctx.allowing_jumps:
+                        self.report("Allowing jump in CGD direction.")
+                        # randomly change the parameters
+                        # this helps to escape local minima
+                        self.ctx.parameters += np.random.uniform(
+                            -0.1, 0.1, size=self.ctx.parameters.shape
+                        )
+                        # we have to update previous gradient since we change the parameters
+                        self.ctx.prev_gradient = gradient.copy()
+                        self.ctx.stuck_counter = 0
+                    else:
+                        self.report(
+                            "Aborting: Too many stuck iterations without allowing jumps."
+                        )
+                        self.ctx.converged = True
+                        return
+                # If we are at minimum learning rate, we will abort the optimization
                 if self.ctx.learning_rate == self.ctx.lr_min:
                     self.report("Aborting: Too many stuck iterations.")
                     self.ctx.converged = True
                     return
+            # If previous point is not worse than current one,
+            # we will continue with CGD direction.
+            # If we are not stuck, we will reset stuck counter and increase learning rate.
             else:
                 self.ctx.stuck_counter = 0
                 self.ctx.learning_rate = min(
@@ -226,6 +245,7 @@ class ConjugateGradientOptimizer(_GDBase):
                 self.ctx.prev_value = self.ctx.results[0]
                 self.ctx.prev_parameters = self.ctx.parameters.copy()
 
+                # Update direction every few iterations, it helps us to not get stuck
                 if self.ctx.iteration % self.ctx.restart_interval == 0:
                     self.report("Restarting CGD direction.")
                     self.ctx.direction = -gradient
@@ -254,6 +274,6 @@ class ConjugateGradientOptimizer(_GDBase):
         self.ctx.parameters += step
         self.ctx.iteration += 1
         self.report(
-            f"Iteration {self.ctx.iteration}: Learning rate = {self.ctx.learning_rate:.6f}, Step = {step}"
+            f"Iteration {self.ctx.iteration}: Learning rate = {self.ctx.learning_rate:.12f}, Step = {step}"
         )
         self.report_progress()
