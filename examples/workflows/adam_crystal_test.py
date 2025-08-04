@@ -59,7 +59,7 @@ optimizer_parameters = {
         },
         "initial_parameters": List([a, c]),
         "calculator_parameters": {
-            "codes": {"code": "Pcrystal23@yascheduler"},
+            "codes": {"code": "Pcrystal@yascheduler"},
             "parameters": calculation_settings,
             "basis_family": basis_name,
             "options": options,
@@ -68,4 +68,4 @@ optimizer_parameters = {
 }
 
 results = submit(AdamCrystalOptimizer, **optimizer_parameters)
-print(f"Submitted AdamCrystal23Optimizer: {results.pk}")
+print(f"Submitted AdamCrystalOptimizer: {results.pk}")
