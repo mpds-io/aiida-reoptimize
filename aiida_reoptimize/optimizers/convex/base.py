@@ -23,6 +23,10 @@ class _GDBase(_OptimizerBase):
             message="Optimization failed to find a valid solution.",
         )
 
+        spec.exit_code(
+            402, "ERROR_STUCK_FOR_TOO_LONG", message="The result is a negative number."
+        )
+
     def initialize(self):
         """Initialize context variables and optimization parameters."""
         # structural parameters

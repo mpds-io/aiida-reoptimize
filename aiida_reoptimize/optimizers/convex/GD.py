@@ -153,22 +153,16 @@ class ConjugateGradientOptimizer(_GDBase):
             or 10
         )
 
-        self.ctx.allowing_jumps = (
+        self.ctx.allow_jumps = (
             self.inputs["parameters"]
             .get("algorithm_settings", {})
             .get("allowing_jumps")
             or True
         )
-        self.ctx.allowed_stuck_iterations = (
+        self.ctx.allowed_stuck = (
             self.inputs["parameters"]
             .get("algorithm_settings", {})
-            .get("allowed_stuck_iterations")
-            or 4
-        )
-        self.ctx.allowed_stuck_before_restart_direction = (
-            self.inputs["parameters"]
-            .get("algorithm_settings", {})
-            .get("allowed_stuck_before_restart_direction")
+            .get("allowed_stuck")
             or 3
         )
 
@@ -202,7 +196,7 @@ class ConjugateGradientOptimizer(_GDBase):
                 # If we are stuck for too long, we will restart CGD direction
                 if (
                     self.ctx.stuck_counter
-                    > self.ctx.allowed_stuck_before_restart_direction
+                    >= self.ctx.allowed_stuck
                 ):
                     self.report(
                         "Stuck for too long, restarting CGD direction."
@@ -211,28 +205,29 @@ class ConjugateGradientOptimizer(_GDBase):
                 # if we a still stucked for, we change the current point or abort optimization
                 # if we are allowed to jump, we will change the current point
                 # otherwise we will abort the optimization
-                if self.ctx.stuck_counter == self.ctx.allowed_stuck_iterations:
-                    if self.ctx.allowing_jumps:
-                        self.report("Allowing jump in CGD direction.")
+                if self.ctx.stuck_counter >= (self.ctx.allowed_stuck + 1):
+                    if self.ctx.allow_jumps:
+                        self.report("Jump in random direction.")
+                        self.ctx.stuck_counter = 0
                         # randomly change the parameters
                         # this helps to escape local minima
                         self.ctx.parameters += np.random.uniform(
                             -0.1, 0.1, size=self.ctx.parameters.shape
                         )
-                        # we have to update previous gradient since we change the parameters
-                        self.ctx.prev_gradient = gradient.copy()
-                        self.ctx.stuck_counter = 0
+
+                        # To avoid infinite loop, we reset the previous values
+                        self.ctx.prev_value = None
+                        self.ctx.prev_gradient = np.zeros_like(self.ctx.parameters)
                     else:
+                        # Should it be just a warning?
                         self.report(
                             "Aborting: Too many stuck iterations without allowing jumps."
                         )
-                        self.ctx.converged = True
-                        return
+                        return self.exit_codes.ERROR_STUCK_FOR_TOO_LONG
                 # If we are at minimum learning rate, we will abort the optimization
                 if self.ctx.learning_rate == self.ctx.lr_min:
-                    self.report("Aborting: Too many stuck iterations.")
-                    self.ctx.converged = True
-                    return
+                    self.report("Aborting: Learning rate reached minimum.")
+                    return self.exit_codes.ERROR_STUCK_FOR_TOO_LONG
             # If previous point is not worse than current one,
             # we will continue with CGD direction.
             # If we are not stuck, we will reset stuck counter and increase learning rate.
