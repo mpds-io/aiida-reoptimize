@@ -41,6 +41,9 @@ class RMSpropOptimizer(_GDBase):
             / np.sqrt(self.ctx.accumulated_grad_sq + self.ctx.epsilon)
             * gradient
         )
+
+        step = self.clamp_step(step)
+
         self.report_progress()
         self.ctx.parameters -= step
         self.ctx.iteration += 1
@@ -93,6 +96,7 @@ class AdamOptimizer(_GDBase):
         denominator[denominator <= 0] = self.ctx.epsilon  # must be positive
 
         step = self.ctx.learning_rate * m_hat / denominator
+        step = self.clamp_step(step)
 
         if np.any(np.isnan(step)) or np.any(np.isinf(step)):
             self.report("Aborting: Invalid step (NaN/Inf detected).")
@@ -264,6 +268,8 @@ class ConjugateGradientOptimizer(_GDBase):
             self.report("Aborting: Invalid step (NaN/Inf detected).")
             self.ctx.converged = True
             return
+
+        step = self.clamp_step(step)
 
         # Save current value, parameters, and prev_gradient before update
         self.ctx.parameters += step

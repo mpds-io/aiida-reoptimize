@@ -63,6 +63,15 @@ class _GDBase(_OptimizerBase):
         self.ctx.iteration = 1
         self.ctx.history = []
 
+        self.ctx.max_step = (
+            self.inputs["parameters"].get("algorithm_settings", {}).get("max_step", 0.1)
+        )
+
+    def clamp_step(self, step):
+        if self.ctx.max_step:
+            return np.clip(step, -self.ctx.max_step, self.ctx.max_step)
+        return step
+
     def should_continue(self):
         return not self.ctx.converged and self.ctx.iteration <= self.ctx.itmax
 

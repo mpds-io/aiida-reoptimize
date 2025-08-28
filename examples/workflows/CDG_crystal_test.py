@@ -59,7 +59,7 @@ optimizer_parameters = {
         },
         "initial_parameters": List([a, c]),
         "calculator_parameters": {
-            "codes": {"code": "Pcrystal@yascheduler"},
+            "codes": {"code": "Pcrystal23@yascheduler"},
             "parameters": calculation_settings,
             "basis_family": basis_name,
             "options": options,

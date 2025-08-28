@@ -106,6 +106,9 @@ class BFGSOptimizer(_GDBase):
         self.report(f"Current step size is {step_size}")
         self.ctx.parameters_prev = self.ctx.parameters.copy()
         self.ctx.gradient_prev = gradient.copy()
+        step = step_size * direction
+        step = self.clamp_step(step)
+
         self.report_progress()
-        self.ctx.parameters = self.ctx.parameters + step_size * direction
+        self.ctx.parameters = self.ctx.parameters + step
         self.ctx.iteration += 1
