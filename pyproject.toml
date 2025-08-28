@@ -11,17 +11,12 @@ requires-python = ">=3.11,<4"
 dependencies = [
     "pymoo==0.6.1.3",
     "aiida-core (>=2.5.2,<3.0.0)",
+    "mpds_client",
+    "ase",
+    "spglib>=2.6.0",
+    "ase-fleur @ git+https://github.com/blokhin/ase-fleur",
+    "aiida-fleur>=2.0.0",
 ]
-
-[project.optional-dependencies]
-ab_initio = [
-        "mpds_client",
-        "ase",
-        "spglib>=2.6.0",
-        "ase-fleur @ git+https://github.com/blokhin/ase-fleur",
-        "aiida-fleur>=2.0.0",
-]
-
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
