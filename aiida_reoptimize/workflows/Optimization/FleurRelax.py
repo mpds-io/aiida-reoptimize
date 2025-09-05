@@ -16,21 +16,21 @@ class BaseFleurRelaxOptimizer:
     )
 
 
-class AdamFleurSCFOptimizer(BaseFleurRelaxOptimizer, AdamOptimizer):
+class AdamFleurRelaxOptimizer(BaseFleurRelaxOptimizer, AdamOptimizer):
     pass
 
 
-class CDGFleurSCFOptimizer(BaseFleurRelaxOptimizer, ConjugateGradientOptimizer):
+class CDGFleurRelaxOptimizer(BaseFleurRelaxOptimizer, ConjugateGradientOptimizer):
     pass
 
 
-class RMSpropFleurSCFOptimizer(BaseFleurRelaxOptimizer, RMSpropOptimizer):
+class RMSpropFleurRelaxOptimizer(BaseFleurRelaxOptimizer, RMSpropOptimizer):
     pass
 
 
-class BFGSFleurSCFOptimizer(BaseFleurRelaxOptimizer, BFGSOptimizer):
+class BFGSFleurRelaxOptimizer(BaseFleurRelaxOptimizer, BFGSOptimizer):
     pass
 
 
-class PyMOOFleurSCFOptimizer(BaseFleurRelaxOptimizer, PyMOO_Optimizer):
+class PyMOOFleurRelaxOptimizer(BaseFleurRelaxOptimizer, PyMOO_Optimizer):
     pass
