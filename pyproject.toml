@@ -1,13 +1,13 @@
 [project]
 name = "aiida-reoptimize"
-version = "0.6.1"
+version = "0.6.2"
 description = "Algorithms for external optimization of crystal structures"
 authors = [
     {name = "Anton Domnin",email = "a.v.daomnin@gmail.com"},
 ]
 license = "MIT"
 readme = "README.md"
-requires-python = ">=3.11,<4"
+requires-python = ">=3.9,<4"
 dependencies = [
     "pymoo==0.6.1.3",
     "aiida-core (>=2.5.2,<3.0.0)",
@@ -23,6 +23,13 @@ requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [project.entry-points."aiida.workflows"]
+# FleurRelax optimizers
+"aiida_reoptimize.AdamFleurRelaxOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurRelax:AdamFleurRelaxOptimizer"
+"aiida_reoptimize.RMSpropFleurRelaxOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurRelax:RMSpropFleurRelaxOptimizer"
+"aiida_reoptimize.BFGSFleurRelaxOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurRelax:BFGSFleurRelaxOptimizer"
+"aiida_reoptimize.PyMOOFleurRelaxOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurRelax:PyMOOFleurRelaxOptimizer"
+
+
 # FleurSCF optimizers
 "aiida_reoptimize.AdamFleurSCFOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurSCF:AdamFleurSCFOptimizer"
 "aiida_reoptimize.RMSpropFleurSCFOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurSCF:RMSpropFleurSCFOptimizer"
