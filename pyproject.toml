@@ -16,6 +16,7 @@ dependencies = [
     "spglib>=2.6.0",
     "ase-fleur @ git+https://github.com/blokhin/ase-fleur",
     "aiida-fleur>=2.0.0",
+    "aiida-crystal-dft @ git+https://github.com/tilde-lab/aiida-crystal-dft"
 ]
 
 [build-system]

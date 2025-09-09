@@ -28,7 +28,7 @@ class RMSpropCrystalOptimizer(BaseCrystalOptimizer, RMSpropOptimizer):
     pass
 
 
-class BFGSFCrystalOptimizer(BaseCrystalOptimizer, BFGSOptimizer):
+class BFGSCrystalOptimizer(BaseCrystalOptimizer, BFGSOptimizer):
     pass
 
 
