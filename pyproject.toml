@@ -29,6 +29,7 @@ build-backend = "poetry.core.masonry.api"
 "aiida_reoptimize.RMSpropFleurRelaxOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurRelax:RMSpropFleurRelaxOptimizer"
 "aiida_reoptimize.BFGSFleurRelaxOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurRelax:BFGSFleurRelaxOptimizer"
 "aiida_reoptimize.PyMOOFleurRelaxOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurRelax:PyMOOFleurRelaxOptimizer"
+"aiida_reoptimize.CDGFleurRelaxOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurRelax:CDGFleurRelaxOptimizer"
 
 
 # FleurSCF optimizers
@@ -36,6 +37,7 @@ build-backend = "poetry.core.masonry.api"
 "aiida_reoptimize.RMSpropFleurSCFOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurSCF:RMSpropFleurSCFOptimizer"
 "aiida_reoptimize.BFGSFleurSCFOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurSCF:BFGSFleurSCFOptimizer"
 "aiida_reoptimize.PyMOOFleurSCFOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurSCF:PyMOOFleurSCFOptimizer"
+"aiida_reoptimize.CDGFleurSCFOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurSCF:CDGFleurSCFOptimizer"
 
 #Crystal software optimizers
 "aiida_reoptimize.AdamCrystalOptimizer" = "aiida_reoptimize.workflows.Optimization.Crystal:AdamCrystalOptimizer"
