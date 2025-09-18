@@ -1,16 +1,27 @@
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
 [project]
 name = "aiida-reoptimize"
-version = "0.6.2"
+version = "0.6.3"
 description = "Algorithms for external optimization of crystal structures"
-authors = [
-    {name = "Anton Domnin",email = "a.v.daomnin@gmail.com"},
+authors = [{name = "Anton Domnin",email = "a.v.daomnin@gmail.com"},]
+classifiers = [
+    "Programming Language :: Python",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Development Status :: 3 - Alpha",
+    "Framework :: AiiDA"
 ]
+keywords = ["aiida", "plugin", "fleur", "crystal"]
 license = "MIT"
 readme = "README.md"
 requires-python = ">=3.9,<3.13"
 dependencies = [
     "pymoo==0.6.1.3",
-    "aiida-core (>=2.5.2,<3.0.0)",
+    "aiida-core>=2.5,<3",
     "mpds_client",
     "ase",
     "spglib>=2.6.0",
@@ -19,34 +30,26 @@ dependencies = [
     "aiida-crystal-dft @ git+https://github.com/tilde-lab/aiida-crystal-dft"
 ]
 
-[build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+
+[project.urls]
+Source = "https://github.com/mpds-io/aiida-reoptimize"
 
 [project.entry-points."aiida.workflows"]
-# FleurRelax optimizers
 "aiida_reoptimize.AdamFleurRelaxOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurRelax:AdamFleurRelaxOptimizer"
 "aiida_reoptimize.RMSpropFleurRelaxOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurRelax:RMSpropFleurRelaxOptimizer"
 "aiida_reoptimize.BFGSFleurRelaxOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurRelax:BFGSFleurRelaxOptimizer"
 "aiida_reoptimize.PyMOOFleurRelaxOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurRelax:PyMOOFleurRelaxOptimizer"
 "aiida_reoptimize.CDGFleurRelaxOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurRelax:CDGFleurRelaxOptimizer"
-
-
-# FleurSCF optimizers
 "aiida_reoptimize.AdamFleurSCFOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurSCF:AdamFleurSCFOptimizer"
 "aiida_reoptimize.RMSpropFleurSCFOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurSCF:RMSpropFleurSCFOptimizer"
 "aiida_reoptimize.BFGSFleurSCFOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurSCF:BFGSFleurSCFOptimizer"
 "aiida_reoptimize.PyMOOFleurSCFOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurSCF:PyMOOFleurSCFOptimizer"
 "aiida_reoptimize.CDGFleurSCFOptimizer" = "aiida_reoptimize.workflows.Optimization.FleurSCF:CDGFleurSCFOptimizer"
-
-#Crystal software optimizers
 "aiida_reoptimize.AdamCrystalOptimizer" = "aiida_reoptimize.workflows.Optimization.Crystal:AdamCrystalOptimizer"
 "aiida_reoptimize.CDGCrystalOptimizer" = "aiida_reoptimize.workflows.Optimization.Crystal:CDGCrystalOptimizer"
 "aiida_reoptimize.RMSpropCrystalOptimizer" = "aiida_reoptimize.workflows.Optimization.Crystal:RMSpropCrystalOptimizer"
 "aiida_reoptimize.BFGSCrystalOptimizer" = "aiida_reoptimize.workflows.Optimization.Crystal:BFGSCrystalOptimizer"
 "aiida_reoptimize.PyMOOCrystalOptimizer" = "aiida_reoptimize.workflows.Optimization.Crystal:PyMOOCrystalOptimizer"
-
-# Evaluators
 "aiida_reoptimize.FleurSCFLatticeProblem" = "aiida_reoptimize.workflows.Evaluation.fleur_evaluators:FleurSCFLatticeProblem"
 "aiida_reoptimize.FleurRelaxLatticeProblem" = "aiida_reoptimize.workflows.Evaluation.fleur_evaluators:FleurRelaxLatticeProblem"
 "aiida_reoptimize.CrystalLatticeProblem" = "aiida_reoptimize.workflows.Evaluation.crystal_evaluation:CrystalLatticeProblem" 
