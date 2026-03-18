@@ -1,13 +1,17 @@
-# aiida-reoptimize
+# Atomic structure optimization by AiiDA and PyMOO
 
-**Atomic structure and parameter optimization powered by AiiDA and PyMOO**
+`aiida-reoptimize` is a framework for running advanced optimization workflows in computational materials science and chemistry, leveraging the AiiDA workflows and the [PyMOO](https://pymoo.org) external optimization library. Both lattice and atomic positions optimizations are supported. Two simulation engines were tested: [CRYSTAL](https://www.crystal.unito.it) and [FLEUR](https://www.flapw.de).
 
 
-## Overview
+## Features
 
-`aiida-reoptimize` is a flexible framework for running advanced optimization workflows in computational materials science and chemistry, leveraging the AiiDA workflows and the PyMOO optimization library. It supports both lattice and atomic positions optimization and is designed for easy integration with external simulation codes and custom workflows.
+- **PyMOO integration**: Use state-of-the-art algorithms from the [PyMOO](https://pymoo.org) toolbox.
+- **Flexible evaluator system**: Decouple optimization logic from the actual calculation, supporting both simple function optimization and structure-based workflows.
+- **Structure optimization**: Easily optimize lattice parameters or atomic positions using the `StructureCalculator` and structure-aware evaluators.
+- **Extensible**: allows adding custom optimizers, evaluators, or problem definitions without writing large amounts of code.
 
-## Installation
+
+## Usage
 
 ```sh
 git clone https://github.com/mpds-io/aiida-reoptimize.git
@@ -15,29 +19,19 @@ cd aiida-reoptimize
 pip install .
 ```
 
-## Features
+Note dynamic vs. static workflows:
 
-- **PyMOO integration**: Use state-of-the-art algorithms from the PyMOO library.
-- **Flexible evaluator system**: Decouple optimization logic from the actual calculation, supporting both simple function optimization and structure-based workflows.
-- **Structure optimization**: Easily optimize lattice parameters or atomic positions using the `StructureCalculator` and structure-aware evaluators.
-- **Extensible**: allows adding custom optimizers, evaluators, or problem definitions without writing large amounts of code.
-
-## Important Usage Notes
-
-Dynamic vs. Static Workflows
-
-* **Dynamic workflows** (created via `OptimizerBuilder`):
-These allow you to flexibly combine optimizers, evaluators, and extractors at runtime. **However, they can only be used with the `run()` function (not `submit()`), because they are not importable by the AiiDA daemon.**
+* **Dynamic workflows** (created via `OptimizerBuilder`) allow you to flexibly combine optimizers, evaluators, and extractors at runtime. **However, they can only be used with the AiiDA `run` (not `submit`) method, because they are not importable by the AiiDA daemon.**
 This means they are suitable for interactive or short-running tasks, but not for long-running or daemon-managed workflows.
 
-* **Static workflows** (in [workflows](https://github.com/mpds-io/aiida-reoptimize/tree/master/aiida_reoptimize/workflows)):
-These are pre-defined, importable workflows registered as AiiDA entry points.
-**They can be used with both `run()` and `submit()` and are suitable for production, daemon-managed, or long-running tasks.**
-Currently available static workflows require you to specify the crystal structure as an input parameter (see below for details).
+* **Static workflows** (in [workflows](https://github.com/mpds-io/aiida-reoptimize/tree/master/aiida_reoptimize/workflows)) are pre-defined, importable workflows registered as AiiDA entry points.
+**They can be used with both `run` and `submit` methods and are suitable for production, daemon-managed, or long-running tasks.**
+Currently available static workflows require to specify the crystal structure as an input parameter (see below).
 
-## Technical Details
 
-- **PyMOO**: The package uses PyMOO library for optimization. These objects are kept as local variables in the WorkChain (not in the AiiDA context) to avoid serialization issues.
+## Technical details
+
+- **PyMOO**: Its objects are kept as local variables in the WorkChain (not in the AiiDA context) to avoid serialization issues.
 - **Evaluator WorkChains**: Optimization is performed by submitting batches of calculations via a dedicated evaluator WorkChain. The evaluator:
   - Accepts a problem WorkChain (e.g., a function or structure calculation);
   - Receives a list of parameter sets to evaluate;
@@ -48,10 +42,7 @@ Currently available static workflows require you to specify the crystal structur
   - **Parameter optimizers**: Directly optimize numerical parameters.
   - **Structure optimizers**: Modify and optimize crystal structures.
 
-
-## Algorithms
-
-Currently, two types of algorithms are implemented.
+Currently, two types of algorithms for structure optimization are implemented.
 
 ### Gradient-based optimizers
 
@@ -61,9 +52,7 @@ These optimizers are implemented as AiiDA WorkChains:
 - **Adam**
 - **RMSProp**
 
-## Input parameters of the optimizers
-
-All implemented algorithms accept the following common inputs:
+#### Their common input parameters:
 
 - `itmax` (`Int`): Maximal number of iterations (default: `100`)
 - `parameters` (`Dict`): Dictionary containing algorithm-specific settings (in `algorithm_settings`, `Dict`) and additional parameters required for optimization
@@ -135,11 +124,12 @@ The `PyMOO_Optimizer` class requires the following parameters as input:
 - **G3PCX**: `pop_size`, `sampling`, `n_offsprings`, `n_parents`, `family_size`, `repair`
 - **PSO**: `pop_size`, `sampling`, `w`, `c1`, `c2`, `adaptive`, `initial_velocity`, `max_velocity_rate`, `pertube_best`
 
-For details on the meaning and possible values of each keyword, see the [PyMOO documentation](https://pymoo.org/algorithms/list.html).
+For details see the [PyMOO docs](https://pymoo.org/algorithms/list.html).
 
-**Note:**  
-When specifying operators such as `sampling`, `selection`, `crossover`, `mutation`, or `repair` in your `algorithm_settings`,  
-**you should use the name of the operator as a string** (e.g., `"SBX"`, `"FRS"`, `"TOS"`),  
+**Note:**
+
+When specifying operators such as `sampling`, `selection`, `crossover`, `mutation`, or `repair` in your `algorithm_settings`,
+**you should use the name of the operator as a string** (e.g., `"SBX"`, `"FRS"`, `"TOS"`),
 **not** an instance of the operator class.
 
 **Example:**
@@ -149,30 +139,30 @@ parameters = Dict({
     "algorithm_name": "GA",
     "algorithm_settings": {
         "pop_size": 50,
-        "sampling": "LHS",         # Use "LHS" (Latin Hypercube Sampling)
-        "crossover": "SBX",        # Use "SBX"
-        "mutation": "PM",          # Use "PM"
-        "selection": "TOS"         # Use "TOS"
+        "sampling": "LHS",
+        "crossover": "SBX",
+        "mutation": "PM",
+        "selection": "TOS"
     },
     "bounds": [[0, 1], [0, 1]],
     "dimensions": 2
 ```
 
 
-## Example: Structure Optimization
+## Examples
 
-For detailed examples of structure optimization workflows, refer to the [examples directory](https://github.com/mpds-io/aiida-reoptimize/tree/master/examples). It contains sample scripts and configurations to help you get started with optimizing atomic structures and parameters using `aiida-reoptimize`.
+For detailed examples of structure optimization workflows, refer to the `examples` directory.
 
 
 ## References
 
 - [pymoo: Multi-objective Optimization in Python](https://pymoo.org)
 - [AiiDA: Automated Interactive Infrastructure and Database for Computational Science](https://www.aiida.net)
-- [Similar work by Dominik Gresch](https://github.com/greschd/aiida-optimize)
+- [Another work on structure optimization in AiiDA by Dominik Gresch](https://github.com/greschd/aiida-optimize)
 
 
 ## License
 
 MIT
 
-&copy; 2025 Tilde MI and Materials Platform for Data Science LLC
+&copy; 2025-2026 Materials Platform for Data Science OÜ
