@@ -26,7 +26,6 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Chemistry",
     "Topic :: Scientific/Engineering :: Physics",
     "Topic :: Scientific/Engineering :: Information Analysis"
-    "Framework :: AiiDA"
 ]
 keywords = ["aiida", "plugin", "fleur", "crystal"]
 license = "MIT"
