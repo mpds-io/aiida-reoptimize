@@ -23,26 +23,21 @@ class ExampleBFGS(BFGSOptimizer):
     extractor = dummy_extractor
 
 
-parameters = Dict({
-    "algorithm_settings": {
-        "alpha": 1,
-        "beta": 0.8,
-        "sigma": 1e-4,
-        "linesearch_max_iter": 20,
-        "delta": 5e-4},
-    "initial_parameters": List([0.3, -0.2, -0.4]),
-})
-
-__parameters = Dict(
-    dict={
-        "itmax": Int(100),
-        "parameters": parameters,
+parameters = Dict(
+    {
+        "algorithm_settings": {"alpha": 1, "beta": 0.8, "sigma": 1e-4, "linesearch_max_iter": 20, "delta": 5e-4},
+        "initial_parameters": List(list=[0.3, -0.2, -0.4]),
     }
 )
 
+optimizer_inputs = {
+    "itmax": Int(100),
+    "parameters": parameters,
+}
+
 results = run(
     ExampleBFGS,
-    **__parameters,
+    **optimizer_inputs,
 )
 
 print("Optimization Results:")
@@ -52,5 +47,5 @@ if results:
     print(f"Best node: {results['result_node_pk']}")
 
 print("Optimization history:")
-for iter_ in results['history']:
+for iter_ in results["history"]:
     print(iter_)
