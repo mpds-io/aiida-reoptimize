@@ -1,10 +1,6 @@
-[build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
-
 [project]
 name = "aiida-reoptimize"
-version = "0.6.4"
+version = "0.6.5"
 description = "Algorithms for external optimization of crystal structures"
 authors = [{name = "Anton Domnin",email = "a.v.daomnin@gmail.com"},]
 classifiers = [
@@ -15,7 +11,6 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -30,7 +25,7 @@ classifiers = [
 keywords = ["aiida", "plugin", "fleur", "crystal"]
 license = "MIT"
 readme = "README.md"
-requires-python = ">=3.9,<3.16"
+requires-python = ">=3.10,<3.16"
 dependencies = [
     "pymoo>=0.6.1.6,<0.7",
     "aiida-core>=2.5,<3",
@@ -65,5 +60,10 @@ Source = "https://github.com/mpds-io/aiida-reoptimize"
 "aiida_reoptimize.FleurRelaxLatticeProblem" = "aiida_reoptimize.workflows.Evaluation.fleur_evaluators:FleurRelaxLatticeProblem"
 "aiida_reoptimize.CrystalLatticeProblem" = "aiida_reoptimize.workflows.Evaluation.crystal_evaluation:CrystalLatticeProblem"
 
-[tool.poetry.group.dev.dependencies]
-ruff = "^0.6.9"
+[dependency-groups]
+dev = [
+    "ruff>=0.6.9,<0.7",
+]
+
+[tool.uv]
+default-groups = ["dev"]
