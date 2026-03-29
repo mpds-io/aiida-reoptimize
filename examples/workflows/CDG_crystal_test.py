@@ -49,22 +49,24 @@ atoms = crystal(
 optimizer_parameters = {
     "itmax": Int(100),
     "structure": StructureData(ase=atoms),
-    "parameters": Dict({
-        "algorithm_settings": {
-            "tolerance": 1e-1,
-            "learning_rate": 1e-2,
-            "lr_increase": 1.2,
-            "lr_decrease": 0.2,
-            "delta": 0.0000529177,
-        },
-        "initial_parameters": List([a, c]),
-        "calculator_parameters": {
-            "codes": {"code": "Pcrystal23@yascheduler"},
-            "parameters": calculation_settings,
-            "basis_family": basis_name,
-            "options": options,
-        },
-    }),
+    "parameters": Dict(
+        {
+            "algorithm_settings": {
+                "tolerance": 1e-1,
+                "learning_rate": 1e-2,
+                "lr_increase": 1.2,
+                "lr_decrease": 0.2,
+                "delta": 0.0000529177,
+            },
+            "initial_parameters": List(list=[a, c]),
+            "calculator_parameters": {
+                "codes": {"code": "Pcrystal23@yascheduler"},
+                "parameters": calculation_settings,
+                "basis_family": basis_name,
+                "options": options,
+            },
+        }
+    ),
 }
 
 results = submit(CDGCrystalOptimizer, **optimizer_parameters)

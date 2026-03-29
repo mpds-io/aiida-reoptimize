@@ -26,15 +26,15 @@ calculation_settings = Dict(
                 "BIPOSIZE": 256000000,
                 "EXCHSIZE": 256000000,
                 "MAXCYCLE": 200,
-        }}}
+            },
+        },
+    }
 )
 
 basis_name = "MPDSBSL_NEUTRAL_24"
 
 try:
-    basis_family, _ = DataFactory("crystal_dft.basis_family").get_or_create(
-        basis_name
-    )
+    basis_family, _ = DataFactory("crystal_dft.basis_family").get_or_create(basis_name)
 except Exception as e:
     print(f"Error loading basis set {basis_name}: {e}")
     raise e
@@ -53,9 +53,7 @@ inputs = {
     "options": options,
 }
 
-dummy_extractor = BasicExtractor(
-    node_extractor=lambda x: x["output_parameters"]["energy"]
-)
+dummy_extractor = BasicExtractor(node_extractor=lambda x: x["output_parameters"]["energy"])
 #
 builder = OptimizerBuilder.from_MPDS(
     optimizer_workchain=AdamOptimizer,
@@ -71,10 +69,12 @@ a = 3.905
 #
 optimizer_parameters = {
     "itmax": Int(100),
-    "parameters": Dict({
-        "algorithm_settings": {"tolerance": 1e-3, "learning_rate": 0.05},
-        "initial_parameters": List([a]),
-    }),
+    "parameters": Dict(
+        {
+            "algorithm_settings": {"tolerance": 1e-3, "learning_rate": 0.05},
+            "initial_parameters": List(list=[a]),
+        }
+    ),
 }
 #
 optimizer = builder.get_optimizer()
