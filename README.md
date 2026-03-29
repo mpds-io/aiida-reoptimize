@@ -28,6 +28,61 @@ This means they are suitable for interactive or short-running tasks, but not for
 **They can be used with both `run` and `submit` methods and are suitable for production, daemon-managed, or long-running tasks.**
 Currently available static workflows require to specify the crystal structure as an input parameter (see below).
 
+### Static workchains
+
+The package ships importable static AiiDA workchains under [aiida_reoptimize/workflows](aiida_reoptimize/workflows). They are suitable for `submit` and for daemon execution.
+
+- Evaluation workchains:
+  - `aiida_reoptimize.CrystalLatticeProblem`: evaluate lattice distortions with `BaseCrystalWorkChain`
+  - `aiida_reoptimize.FleurSCFLatticeProblem`: evaluate lattice distortions with `FleurScfWorkChain`
+  - `aiida_reoptimize.FleurRelaxLatticeProblem`: evaluate lattice distortions with `FleurRelaxWorkChain`
+- Optimization workchains:
+  - CRYSTAL: `AdamCrystalOptimizer`, `CDGCrystalOptimizer`, `RMSpropCrystalOptimizer`, `BFGSCrystalOptimizer`, `PyMOOCrystalOptimizer`
+  - FLEUR SCF: `AdamFleurSCFOptimizer`, `CDGFleurSCFOptimizer`, `RMSpropFleurSCFOptimizer`, `BFGSFleurSCFOptimizer`, `PyMOOFleurSCFOptimizer`
+  - FLEUR relax: `AdamFleurRelaxOptimizer`, `CDGFleurRelaxOptimizer`, `RMSpropFleurRelaxOptimizer`, `BFGSFleurRelaxOptimizer`, `PyMOOFleurRelaxOptimizer`
+
+Static lattice evaluators share the same core inputs:
+
+- `structure`: source `StructureData`
+- `targets`: list of lattice perturbations to evaluate
+- `calculator_parameters`: inputs forwarded to the underlying calculator workchain
+- `structure_keyword`: optional path to the structure input in the target builder, defaults to `['structure']`
+
+### How To Add A Custom Static Workflow
+
+Minimal pattern for adding your own static evaluator and optimizer while keeping compatibility with `submit` and AiiDA entry points.
+
+```python
+from aiida_reoptimize.base.Evaluation import StaticEvalLatticeProblem
+from aiida_reoptimize.workflows.Optimization._common import (
+  AdamOptimizer,
+  StaticOptimizerBinding,
+)
+
+
+class MyLatticeProblem(StaticEvalLatticeProblem):
+  # Any AiiDA workchain that accepts structure + calculator parameters.
+  calculator_workchain = MyCalculatorWorkChain
+
+
+class BaseMyOptimizer(StaticOptimizerBinding):
+  evaluator_workchain = MyLatticeProblem
+  # Path inside node.outputs used as objective value.
+  extractor_path = ("output_parameters", "energy")
+
+
+class AdamMyOptimizer(BaseMyOptimizer, AdamOptimizer):
+  pass
+```
+
+Then register your classes in `pyproject.toml` under `project.entry-points."aiida.workflows"`.
+
+```toml
+[project.entry-points."aiida.workflows"]
+"aiida_reoptimize.MyLatticeProblem" = "your_module:MyLatticeProblem"
+"aiida_reoptimize.AdamMyOptimizer" = "your_module:AdamMyOptimizer"
+```
+
 
 ## Technical details
 
