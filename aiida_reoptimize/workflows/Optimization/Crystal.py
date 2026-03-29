@@ -1,36 +1,38 @@
-from ...base.Extractors import BasicExtractor
-from ...optimizers.convex.GD import (
-    AdamOptimizer,
-    ConjugateGradientOptimizer,
-    RMSpropOptimizer,
-)
-from ...optimizers.convex.QN import BFGSOptimizer
-from ...optimizers.PyMOO.PyMOO import PyMOO_Optimizer
+"""Static optimization workchains for CRYSTAL-based lattice problems."""
+
 from ..Evaluation.crystal_evaluation import CrystalLatticeProblem
+from ._common import (
+    AdamOptimizer,
+    BFGSOptimizer,
+    ConjugateGradientOptimizer,
+    PyMOO_Optimizer,
+    RMSpropOptimizer,
+    StaticOptimizerBinding,
+)
 
 
-class BaseCrystalOptimizer:
+class BaseCrystalOptimizer(StaticOptimizerBinding):
+    """Bind the generic optimizers to the CRYSTAL lattice evaluator."""
+
     evaluator_workchain = CrystalLatticeProblem
-    extractor = BasicExtractor(
-        node_extractor=lambda x: x["output_parameters"]["energy"]
-    )
+    extractor_path = ("output_parameters", "energy")
 
 
 class AdamCrystalOptimizer(BaseCrystalOptimizer, AdamOptimizer):
-    pass
+    """Adam optimizer registered for CRYSTAL lattice optimization."""
 
 
 class CDGCrystalOptimizer(BaseCrystalOptimizer, ConjugateGradientOptimizer):
-    pass
+    """Conjugate-gradient optimizer registered for CRYSTAL lattice optimization."""
 
 
 class RMSpropCrystalOptimizer(BaseCrystalOptimizer, RMSpropOptimizer):
-    pass
+    """RMSprop optimizer registered for CRYSTAL lattice optimization."""
 
 
 class BFGSCrystalOptimizer(BaseCrystalOptimizer, BFGSOptimizer):
-    pass
+    """BFGS optimizer registered for CRYSTAL lattice optimization."""
 
 
 class PyMOOCrystalOptimizer(BaseCrystalOptimizer, PyMOO_Optimizer):
-    pass
+    """PyMOO-backed optimizer registered for CRYSTAL lattice optimization."""

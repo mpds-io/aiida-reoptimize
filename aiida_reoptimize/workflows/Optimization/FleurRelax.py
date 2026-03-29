@@ -1,36 +1,38 @@
-from ...base.Extractors import BasicExtractor
-from ...optimizers.convex.GD import (
-    AdamOptimizer,
-    ConjugateGradientOptimizer,
-    RMSpropOptimizer,
-)
-from ...optimizers.convex.QN import BFGSOptimizer
-from ...optimizers.PyMOO.PyMOO import PyMOO_Optimizer
+"""Static optimization workchains for FLEUR relax lattice problems."""
+
 from ..Evaluation.fleur_evaluators import FleurRelaxLatticeProblem
+from ._common import (
+    AdamOptimizer,
+    BFGSOptimizer,
+    ConjugateGradientOptimizer,
+    PyMOO_Optimizer,
+    RMSpropOptimizer,
+    StaticOptimizerBinding,
+)
 
 
-class BaseFleurRelaxOptimizer:
+class BaseFleurRelaxOptimizer(StaticOptimizerBinding):
+    """Bind the generic optimizers to the FLEUR relax lattice evaluator."""
+
     evaluator_workchain = FleurRelaxLatticeProblem
-    extractor = BasicExtractor(
-        node_extractor=lambda x: x["output_relax_wc_para"]["energy"]
-    )
+    extractor_path = ("output_relax_wc_para", "energy")
 
 
 class AdamFleurRelaxOptimizer(BaseFleurRelaxOptimizer, AdamOptimizer):
-    pass
+    """Adam optimizer registered for FLEUR relax lattice optimization."""
 
 
 class CDGFleurRelaxOptimizer(BaseFleurRelaxOptimizer, ConjugateGradientOptimizer):
-    pass
+    """Conjugate-gradient optimizer registered for FLEUR relax lattice optimization."""
 
 
 class RMSpropFleurRelaxOptimizer(BaseFleurRelaxOptimizer, RMSpropOptimizer):
-    pass
+    """RMSprop optimizer registered for FLEUR relax lattice optimization."""
 
 
 class BFGSFleurRelaxOptimizer(BaseFleurRelaxOptimizer, BFGSOptimizer):
-    pass
+    """BFGS optimizer registered for FLEUR relax lattice optimization."""
 
 
 class PyMOOFleurRelaxOptimizer(BaseFleurRelaxOptimizer, PyMOO_Optimizer):
-    pass
+    """PyMOO-backed optimizer registered for FLEUR relax lattice optimization."""
