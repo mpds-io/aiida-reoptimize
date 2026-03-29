@@ -15,6 +15,11 @@ class RMSpropOptimizer(_GDBase):
         self.ctx.learning_rate = self.inputs["parameters"].get("algorithm_settings", {}).get("learning_rate") or 1e-3
         self.ctx.rho = self.inputs["parameters"].get("algorithm_settings", {}).get("rho") or 0.9
 
+    def _reset_after_jump(self):
+        """Reset RMSprop accumulators after a random jump."""
+
+        self.ctx.accumulated_grad_sq = np.zeros_like(self.ctx.parameters)
+
     def update_parameters(self, gradient: np.ndarray):
         """Update parameters using RMSprop algorithm."""
         self.record_history(
@@ -23,7 +28,10 @@ class RMSpropOptimizer(_GDBase):
             value=self.ctx.results[0],
         )
 
-        exit_code = self.handle_worse_objective(rate_key="learning_rate")
+        exit_code = self.handle_worse_objective(
+            rate_key="learning_rate",
+            on_jump=self._reset_after_jump,
+        )
         if exit_code is not None:
             return exit_code
 
@@ -56,6 +64,12 @@ class AdamOptimizer(_GDBase):
 
         self.ctx.beta2 = self.inputs["parameters"].get("algorithm_settings", {}).get("beta2", 0.999)
 
+    def _reset_after_jump(self):
+        """Reset Adam moments after a random jump."""
+
+        self.ctx.m = np.zeros_like(self.ctx.parameters)
+        self.ctx.v = np.zeros_like(self.ctx.parameters)
+
     def update_parameters(self, gradient: np.ndarray):
         """Update parameters using ADAM algorithm."""
 
@@ -65,7 +79,10 @@ class AdamOptimizer(_GDBase):
             value=self.ctx.results[0],
         )
 
-        exit_code = self.handle_worse_objective(rate_key="learning_rate")
+        exit_code = self.handle_worse_objective(
+            rate_key="learning_rate",
+            on_jump=self._reset_after_jump,
+        )
         if exit_code is not None:
             return exit_code
 

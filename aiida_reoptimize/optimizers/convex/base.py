@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import numpy as np
 from aiida.orm import Float, Int, List
 
@@ -52,6 +54,10 @@ class _GDBase(_OptimizerBase):
         settings = self.inputs["parameters"].get("algorithm_settings", {})
         self.ctx.prev_value = None
         self.ctx.prev_parameters = self.ctx.parameters.copy()
+        self.ctx.stuck_counter = 0
+        self.ctx.allowed_stuck = settings.get("allowed_stuck", 3)
+        self.ctx.allow_jumps = settings.get("allowing_jumps", True)
+        self.ctx.jump_scale = settings.get("jump_scale", 0.1)
         self.ctx.step_decrease = settings.get("lr_decrease", 0.5)
         self.ctx.min_step_rate = settings.get("lr_min", 1e-8)
 
@@ -65,7 +71,7 @@ class _GDBase(_OptimizerBase):
             return clamped
         return step
 
-    def handle_worse_objective(self, rate_key: str):
+    def handle_worse_objective(self, rate_key: str, on_jump: Callable[[], None] | None = None):
         """Rollback parameters and reduce step rate when objective worsens."""
 
         current_value = self.ctx.results[0]
@@ -73,15 +79,21 @@ class _GDBase(_OptimizerBase):
         if self.ctx.prev_value is None:
             self.ctx.prev_value = current_value
             self.ctx.prev_parameters = self.ctx.parameters.copy()
+            self.ctx.stuck_counter = 0
             return None
 
         if current_value <= self.ctx.prev_value:
             self.ctx.prev_value = current_value
             self.ctx.prev_parameters = self.ctx.parameters.copy()
+            self.ctx.stuck_counter = 0
             return None
 
         self.report("Objective increased, reversing to previous parameters.")
         self.ctx.parameters = self.ctx.prev_parameters.copy()
+        self.ctx.stuck_counter += 1
+
+        if self.ctx.stuck_counter >= self.ctx.allowed_stuck:
+            self.report("Stuck for too long, reducing step rate and preparing restart.")
 
         if hasattr(self.ctx, rate_key):
             current_rate = getattr(self.ctx, rate_key)
@@ -92,8 +104,25 @@ class _GDBase(_OptimizerBase):
             setattr(self.ctx, rate_key, new_rate)
             self.report(f"Reduced {rate_key} from {current_rate} to {new_rate}.")
 
-            if np.isclose(new_rate, self.ctx.min_step_rate):
+            if np.isclose(new_rate, self.ctx.min_step_rate) and not self.ctx.allow_jumps:
                 self.report(f"Aborting: {rate_key} reached minimum ({self.ctx.min_step_rate}).")
+                return self.exit_codes.ERROR_STUCK_FOR_TOO_LONG
+
+        if self.ctx.stuck_counter >= (self.ctx.allowed_stuck + 1):
+            if self.ctx.allow_jumps:
+                self.report("Jump in random direction to escape local stagnation.")
+                self.ctx.parameters += np.random.uniform(
+                    -self.ctx.jump_scale,
+                    self.ctx.jump_scale,
+                    size=self.ctx.parameters.shape,
+                )
+                self.ctx.stuck_counter = 0
+                self.ctx.prev_value = None
+                self.ctx.prev_parameters = self.ctx.parameters.copy()
+                if on_jump is not None:
+                    on_jump()
+            else:
+                self.report("Aborting: Too many stuck iterations without allowing jumps.")
                 return self.exit_codes.ERROR_STUCK_FOR_TOO_LONG
 
         return None

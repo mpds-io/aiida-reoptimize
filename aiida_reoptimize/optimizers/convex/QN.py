@@ -24,6 +24,13 @@ class BFGSOptimizer(_GDBase):
             self.inputs["parameters"].get("algorithm_settings", {}).get("linesearch_max_iter") or 20
         )
 
+    def _reset_after_jump(self):
+        """Reset BFGS state after a random jump."""
+
+        self.ctx.inv_hessian = np.eye(len(self.ctx.parameters))
+        self.ctx.gradient_prev = None
+        self.ctx.parameters_prev = None
+
     def _line_search(self, direction):
         """
         Performs a backtracking line search to determine an appropriate step
@@ -68,7 +75,10 @@ class BFGSOptimizer(_GDBase):
             value=self.ctx.results[0],
         )
 
-        exit_code = self.handle_worse_objective(rate_key="alpha")
+        exit_code = self.handle_worse_objective(
+            rate_key="alpha",
+            on_jump=self._reset_after_jump,
+        )
         if exit_code is not None:
             return exit_code
 
