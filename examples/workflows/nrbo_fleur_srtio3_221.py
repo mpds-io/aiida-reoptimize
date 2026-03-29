@@ -23,7 +23,9 @@ optimizer_parameters = {
     "structure": StructureData(ase=atoms),
     "parameters": Dict(
         {
-            "algorithm_settings": {"pop_size": 5, "max_iteration": 100},
+            "dimensions": 1,
+            "bounds": [[a * 0.8, a * 1.2]],
+            "algorithm_settings": {"pop_size": 5},
             "calculator_parameters": {
                 "codes": {
                     "inpgen": "inpgen@local_machine",
