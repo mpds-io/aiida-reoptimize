@@ -110,8 +110,19 @@ class AlgorithmBuilder:
             # If it is sampling or etc. then it check special dictionary
             # otherwise it is a normal parameter
             if key in AlgorithmBuilder.all_operators:
-                if kwargs[key] in AlgorithmBuilder.all_operators[key]:
-                    parameters[key] = AlgorithmBuilder.all_operators[key][kwargs[key]]  # noqa: E501
+                value = kwargs[key]
+                operators_map = AlgorithmBuilder.all_operators[key]
+
+                if isinstance(value, str):
+                    if value not in operators_map:
+                        raise ValueError(
+                            f"Invalid operator '{value}' for '{key}'. Allowed: {list(operators_map.keys())}"
+                        )
+                    # PyMOO expects operator instances (e.g. LHS()), not classes.
+                    parameters[key] = operators_map[value]()
+                else:
+                    # Keep custom user-provided operator objects as-is.
+                    parameters[key] = value
             else:
                 parameters[key] = kwargs[key]
 
