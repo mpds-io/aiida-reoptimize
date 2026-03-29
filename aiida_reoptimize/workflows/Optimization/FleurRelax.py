@@ -5,6 +5,7 @@ from ._common import (
     AdamOptimizer,
     BFGSOptimizer,
     ConjugateGradientOptimizer,
+    FixedPyMOOAlgorithmMixin,
     PyMOO_Optimizer,
     RMSpropOptimizer,
     StaticOptimizerBinding,
@@ -36,3 +37,23 @@ class BFGSFleurRelaxOptimizer(BaseFleurRelaxOptimizer, BFGSOptimizer):
 
 class PyMOOFleurRelaxOptimizer(BaseFleurRelaxOptimizer, PyMOO_Optimizer):
     """PyMOO-backed optimizer registered for FLEUR relax lattice optimization."""
+
+
+class G3PCXFleurRelaxOptimizer(
+    FixedPyMOOAlgorithmMixin,
+    BaseFleurRelaxOptimizer,
+    PyMOO_Optimizer,
+):
+    """Fixed G3PCX PyMOO optimizer for FLEUR relax lattice optimization."""
+
+    fixed_algorithm_name = "G3PCX"
+
+
+class NRBOFleurRelaxOptimizer(
+    FixedPyMOOAlgorithmMixin,
+    BaseFleurRelaxOptimizer,
+    PyMOO_Optimizer,
+):
+    """Fixed NRBO PyMOO optimizer for FLEUR relax lattice optimization."""
+
+    fixed_algorithm_name = "NRBO"

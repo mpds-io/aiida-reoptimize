@@ -3,6 +3,8 @@
 from collections.abc import Callable
 from typing import Any
 
+from aiida.orm import Str
+
 from ...base.Extractors import BasicExtractor
 from ...optimizers.convex.GD import (
     AdamOptimizer,
@@ -38,10 +40,27 @@ class StaticOptimizerBinding:
             cls.extractor = BasicExtractor(node_extractor=output_path_extractor(cls.extractor_path))
 
 
+class FixedPyMOOAlgorithmMixin:
+    """Mixin that pins a static optimizer to a single PyMOO algorithm."""
+
+    fixed_algorithm_name = ""
+
+    @classmethod
+    def define(cls, spec):
+        super().define(spec)
+        spec.inputs["algorithm_name"].default = lambda: Str(cls.fixed_algorithm_name)
+        spec.inputs["algorithm_name"].help = f"Fixed PyMOO algorithm name ({cls.fixed_algorithm_name})."
+
+    def initialize(self):
+        super().initialize()
+        self.ctx.algorithm_name = self.fixed_algorithm_name
+
+
 __all__ = [
     "AdamOptimizer",
     "BFGSOptimizer",
     "ConjugateGradientOptimizer",
+    "FixedPyMOOAlgorithmMixin",
     "PyMOO_Optimizer",
     "RMSpropOptimizer",
     "StaticOptimizerBinding",

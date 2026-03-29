@@ -37,9 +37,9 @@ The package ships importable static AiiDA workchains under [aiida_reoptimize/wor
   - `aiida_reoptimize.FleurSCFLatticeProblem`: evaluate lattice distortions with `FleurScfWorkChain`
   - `aiida_reoptimize.FleurRelaxLatticeProblem`: evaluate lattice distortions with `FleurRelaxWorkChain`
 - Optimization workchains:
-  - CRYSTAL: `AdamCrystalOptimizer`, `CDGCrystalOptimizer`, `RMSpropCrystalOptimizer`, `BFGSCrystalOptimizer`, `PyMOOCrystalOptimizer`
-  - FLEUR SCF: `AdamFleurSCFOptimizer`, `CDGFleurSCFOptimizer`, `RMSpropFleurSCFOptimizer`, `BFGSFleurSCFOptimizer`, `PyMOOFleurSCFOptimizer`
-  - FLEUR relax: `AdamFleurRelaxOptimizer`, `CDGFleurRelaxOptimizer`, `RMSpropFleurRelaxOptimizer`, `BFGSFleurRelaxOptimizer`, `PyMOOFleurRelaxOptimizer`
+  - CRYSTAL: `AdamCrystalOptimizer`, `CDGCrystalOptimizer`, `RMSpropCrystalOptimizer`, `BFGSCrystalOptimizer`, `PyMOOCrystalOptimizer`, `G3PCXCrystalOptimizer`, `NRBOCrystalOptimizer`
+  - FLEUR SCF: `AdamFleurSCFOptimizer`, `CDGFleurSCFOptimizer`, `RMSpropFleurSCFOptimizer`, `BFGSFleurSCFOptimizer`, `PyMOOFleurSCFOptimizer`, `G3PCXFleurSCFOptimizer`, `NRBOFleurSCFOptimizer`
+  - FLEUR relax: `AdamFleurRelaxOptimizer`, `CDGFleurRelaxOptimizer`, `RMSpropFleurRelaxOptimizer`, `BFGSFleurRelaxOptimizer`, `PyMOOFleurRelaxOptimizer`, `G3PCXFleurRelaxOptimizer`, `NRBOFleurRelaxOptimizer`
 
 Static lattice evaluators share the same core inputs:
 
@@ -169,6 +169,7 @@ The `PyMOO_Optimizer` class requires the following parameters as input:
 - `ES` (Evolution Strategy)
 - `GA` (Genetic Algorithm)
 - `G3PCX` (Generalized Generation Gap with Parent-Centric Crossover)
+- `NRBO` (Neighborhood-Ranked Bayesian Optimization)
 - `PSO` (Particle Swarm Optimization)
 
 **Algorithm-specific settings** (inside `algorithm_settings`):

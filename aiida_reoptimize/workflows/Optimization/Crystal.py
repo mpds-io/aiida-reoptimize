@@ -5,6 +5,7 @@ from ._common import (
     AdamOptimizer,
     BFGSOptimizer,
     ConjugateGradientOptimizer,
+    FixedPyMOOAlgorithmMixin,
     PyMOO_Optimizer,
     RMSpropOptimizer,
     StaticOptimizerBinding,
@@ -36,3 +37,23 @@ class BFGSCrystalOptimizer(BaseCrystalOptimizer, BFGSOptimizer):
 
 class PyMOOCrystalOptimizer(BaseCrystalOptimizer, PyMOO_Optimizer):
     """PyMOO-backed optimizer registered for CRYSTAL lattice optimization."""
+
+
+class G3PCXCrystalOptimizer(
+    FixedPyMOOAlgorithmMixin,
+    BaseCrystalOptimizer,
+    PyMOO_Optimizer,
+):
+    """Fixed G3PCX PyMOO optimizer for CRYSTAL lattice optimization."""
+
+    fixed_algorithm_name = "G3PCX"
+
+
+class NRBOCrystalOptimizer(
+    FixedPyMOOAlgorithmMixin,
+    BaseCrystalOptimizer,
+    PyMOO_Optimizer,
+):
+    """Fixed NRBO PyMOO optimizer for CRYSTAL lattice optimization."""
+
+    fixed_algorithm_name = "NRBO"

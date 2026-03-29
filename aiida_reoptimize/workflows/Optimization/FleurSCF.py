@@ -5,6 +5,7 @@ from ._common import (
     AdamOptimizer,
     BFGSOptimizer,
     ConjugateGradientOptimizer,
+    FixedPyMOOAlgorithmMixin,
     PyMOO_Optimizer,
     RMSpropOptimizer,
     StaticOptimizerBinding,
@@ -36,3 +37,23 @@ class BFGSFleurSCFOptimizer(BaseFleurSCFOptimizer, BFGSOptimizer):
 
 class PyMOOFleurSCFOptimizer(BaseFleurSCFOptimizer, PyMOO_Optimizer):
     """PyMOO-backed optimizer registered for FLEUR SCF lattice optimization."""
+
+
+class G3PCXFleurSCFOptimizer(
+    FixedPyMOOAlgorithmMixin,
+    BaseFleurSCFOptimizer,
+    PyMOO_Optimizer,
+):
+    """Fixed G3PCX PyMOO optimizer for FLEUR SCF lattice optimization."""
+
+    fixed_algorithm_name = "G3PCX"
+
+
+class NRBOFleurSCFOptimizer(
+    FixedPyMOOAlgorithmMixin,
+    BaseFleurSCFOptimizer,
+    PyMOO_Optimizer,
+):
+    """Fixed NRBO PyMOO optimizer for FLEUR SCF lattice optimization."""
+
+    fixed_algorithm_name = "NRBO"
