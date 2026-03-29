@@ -26,19 +26,20 @@ class _PyMOO_Base(_OptimizerBase):
             help="Optimization parameters including dimensions, \
                 bounds, and algorithm settings.",
         )
-        spec.input(
-            "itmax", valid_type=Int, help="Maximum number of iterations."
-        )
+        spec.input("itmax", valid_type=Int, help="Maximum number of iterations.")
 
     def initialize(self):
         """Initialize most basic parameters."""
+        parameters_dict = self.inputs.parameters.get_dict()
+
         self.ctx.iteration = 0
         self.ctx.max_iterations = self.inputs.itmax.value
-        self.ctx.dimensions = self.inputs.parameters["dimensions"]
-        self.ctx.bounds = np.array(self.inputs.parameters["bounds"])
-        self.ctx.algorithm_settings = self.inputs.parameters[
-            "algorithm_settings"
-        ]
+        self.ctx.dimensions = parameters_dict["dimensions"]
+        self.ctx.bounds = np.array(parameters_dict["bounds"])
+        self.ctx.algorithm_settings = parameters_dict.get("algorithm_settings", {})
+        calculator_parameters = parameters_dict.get("calculator_parameters")
+        self.ctx.calculator_parameters = Dict(dict=calculator_parameters) if calculator_parameters is not None else None
+
         self.ctx.algorithm_name = self.inputs.algorithm_name.value
         self.ctx.history = []
 
@@ -71,9 +72,10 @@ class _PyMOO_Base(_OptimizerBase):
         while self.check_itmax():
             pop = algorithm.ask()
             targets = List(list=pop.get("X").tolist())
-            raw_results = self.run_evaluator(
-                targets, calculator_parameters=self.ctx.calculator_parameters
-            )
+            run_kwargs = {}
+            if self.ctx.calculator_parameters is not None:
+                run_kwargs["calculator_parameters"] = self.ctx.calculator_parameters
+            raw_results = self.run_evaluator(targets, **run_kwargs)
             results = self.extractor(raw_results["evaluation_results"])
 
             # Extract PKs for each result
@@ -85,9 +87,7 @@ class _PyMOO_Base(_OptimizerBase):
             # Find best value and pk in this batch
             min_idx = int(np.argmin(results))
             min_value = results[min_idx]
-            min_pk = (
-                node_pks[min_idx] if node_pks[min_idx] is not None else None
-            )
+            min_pk = node_pks[min_idx] if node_pks[min_idx] is not None else None
 
             # Update global best
             if best_value is None or min_value < best_value:
@@ -95,11 +95,13 @@ class _PyMOO_Base(_OptimizerBase):
                 best_pk = min_pk
 
             # Record history for this iteration
-            self.ctx.history.append({
-                "iteration": self.ctx.iteration,
-                "best_value": min_value,
-                "best_pk": min_pk,
-            })
+            self.ctx.history.append(
+                {
+                    "iteration": self.ctx.iteration,
+                    "best_value": min_value,
+                    "best_pk": min_pk,
+                }
+            )
 
             static = StaticProblem(problem, F=np.array(results))
             Evaluator().eval(static, pop)
@@ -128,15 +130,11 @@ class _PyMOO_Base(_OptimizerBase):
             self.out("result_node_pk", Int(best_node_pk).store())
 
     def define_algorithm(self):
-        raise NotImplementedError(
-            "Subclasses must implement define_algorithm()"
-        )
+        raise NotImplementedError("Subclasses must implement define_algorithm()")
 
 
 class PyMOO_Optimizer(_PyMOO_Base):
     def define_algorithm(self, problem):
-        algorithm = AlgorithmBuilder.build_algorithm(
-            self.ctx.algorithm_name, **self.ctx.algorithm_settings
-        )
+        algorithm = AlgorithmBuilder.build_algorithm(self.ctx.algorithm_name, **self.ctx.algorithm_settings)
         algorithm.setup(problem)
         return algorithm
