@@ -57,7 +57,7 @@ required_codes = [fleur_node_label, inpgen_node_label]
 for code_label in required_codes:
     if code_label not in nodes:
         raise KeyError(f"Missing required code: {code_label}")
-    
+
     try:
         fleur_code = load_node(nodes[fleur_node_label])
         inpgen_code = load_node(nodes[inpgen_node_label])
@@ -69,7 +69,7 @@ problem_builder = StructureCalculator(
     structure=initial_structure,
     calculator=FleurScfWorkChain,
     calculator_parameters={"inpgen": inpgen_code, "fleur": fleur_code},
-    structure_keyword="structure",
+    structure_keyword=("structure",),
 )
 
 
@@ -83,23 +83,23 @@ class ExamplePyMOO(PyMOO_Optimizer):
     evaluator_workchain = UserEvaluator
 
 
-parameters = Dict({
-    "dimensions": 2,
-    "bounds": [[a - a * 0.1, a + a * 0.1], [c - c * 0.1, c + c * 0.1]],
-    "algorithm_settings": {"pop_size": 2},
-})
-
-__parameters = Dict(
-    dict={
-        "itmax": Int(2),
-        "parameters": parameters,
-        "algorithm_name": Str("PSO"),
+parameters = Dict(
+    {
+        "dimensions": 2,
+        "bounds": [[a - a * 0.1, a + a * 0.1], [c - c * 0.1, c + c * 0.1]],
+        "algorithm_settings": {"pop_size": 2},
     }
 )
 
+optimizer_inputs = {
+    "itmax": Int(2),
+    "parameters": parameters,
+    "algorithm_name": Str("PSO"),
+}
+
 results = run(
     ExamplePyMOO,
-    **__parameters,
+    **optimizer_inputs,
 )
 
 print("Optimization Results:")

@@ -49,22 +49,24 @@ atoms = crystal(
 optimizer_parameters = {
     "itmax": Int(100),
     "structure": StructureData(ase=atoms),
-    "parameters": Dict({
-        "algorithm_settings": {
-            "learning_rate": 0.05,
-            "beta1": 0.75,
-            "beta2": 0.999,
-            "delta": 5e-4,
-            "tolerance": 1e-2,
-        },
-        "initial_parameters": List([a, c]),
-        "calculator_parameters": {
-            "codes": {"code": "Pcrystal@yascheduler"},
-            "parameters": calculation_settings,
-            "basis_family": basis_name,
-            "options": options,
-        },
-    }),
+    "parameters": Dict(
+        {
+            "algorithm_settings": {
+                "learning_rate": 0.05,
+                "beta1": 0.75,
+                "beta2": 0.999,
+                "delta": 5e-4,
+                "tolerance": 1e-2,
+            },
+            "initial_parameters": List(list=[a, c]),
+            "calculator_parameters": {
+                "codes": {"code": "Pcrystal@yascheduler"},
+                "parameters": calculation_settings,
+                "basis_family": basis_name,
+                "options": options,
+            },
+        }
+    ),
 }
 
 results = submit(AdamCrystalOptimizer, **optimizer_parameters)

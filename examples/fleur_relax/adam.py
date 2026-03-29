@@ -11,37 +11,42 @@ from aiida_reoptimize.optimizers.convex.GD import AdamOptimizer
 
 load_profile()
 
-dummy_extractor = BasicExtractor(
-    node_extractor=lambda x: x["output_relax_wc_para"]["energy"]
-)
+dummy_extractor = BasicExtractor(node_extractor=lambda x: x["output_relax_wc_para"]["energy"])
 
-# Find aiida codes for Fleur and inpgen
-fleur_node_label, inpgen_node_label = "fleur", "inpgen"
-nodes = find_nodes(fleur_node_label, inpgen_node_label)
-required_codes = [fleur_node_label, inpgen_node_label]
 
-for code_label in required_codes:
-    if code_label not in nodes:
-        raise KeyError(f"Missing required code: {code_label}")
+def load_required_codes() -> dict[str, object]:
+    """Load required AiiDA code nodes by configured labels."""
+
+    fleur_label, inpgen_label = "fleur", "inpgen"
+    nodes = find_nodes(fleur_label, inpgen_label)
+
+    missing = [label for label in (fleur_label, inpgen_label) if label not in nodes]
+    if missing:
+        raise KeyError(f"Missing required code labels: {', '.join(missing)}")
 
     try:
-        fleur_code = load_node(nodes[fleur_node_label])
-        inpgen_code = load_node(nodes[inpgen_node_label])
-    except NotExistent as e:
-        raise RuntimeError(f"Failed to load code node: {e}") from e
+        return {
+            "fleur": load_node(nodes[fleur_label]),
+            "inpgen": load_node(nodes[inpgen_label]),
+        }
+    except NotExistent as error:
+        raise RuntimeError(f"Failed to load code node: {error}") from error
+
+
+codes = load_required_codes()
 
 # FleurRelax parameters
 wf_relax_scf = {
-    'fleur_runmax': 4,
-    'itmax_per_run': 70,
-    'mode': 'energy',
-    'energy_converged': 1e-3,
-    }
+    "fleur_runmax": 4,
+    "itmax_per_run": 70,
+    "mode": "energy",
+    "energy_converged": 1e-3,
+}
 
 wf_relax = {
-    'force_criterion': 0.01,
-    'relax_iter': 8
-    }
+    "force_criterion": 0.01,
+    "relax_iter": 8,
+}
 
 
 # set up the calculator for structure optimization
@@ -52,13 +57,13 @@ builder = OptimizerBuilder.from_MPDS(
     mpds_query="SrTiO3/140",
     calculator_parameters={
         "scf": {
-            "inpgen": inpgen_code,
-            "fleur": fleur_code,
-            "wf_parameters": wf_relax_scf
-            },
-        'wf_parameters': wf_relax
+            "inpgen": codes["inpgen"],
+            "fleur": codes["fleur"],
+            "wf_parameters": wf_relax_scf,
         },
-    structure_keyword=("scf", "structure")
+        "wf_parameters": wf_relax,
+    },
+    structure_keyword=("scf", "structure"),
 )
 
 # Setup lattice parameters
@@ -68,10 +73,12 @@ c = 7.796
 
 optimizer_parameters = {
     "itmax": Int(2),
-    "parameters": Dict({
-        "algorithm_settings": {"tolerance": 1e-3},
-        "initial_parameters": List([a, c]),
-    }),
+    "parameters": Dict(
+        {
+            "algorithm_settings": {"tolerance": 1e-3},
+            "initial_parameters": List(list=[a, c]),
+        }
+    ),
 }
 
 optimizer = builder.get_optimizer()

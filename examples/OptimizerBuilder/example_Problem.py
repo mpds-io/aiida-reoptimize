@@ -19,10 +19,12 @@ builder = OptimizerBuilder.from_problem(
 
 optimizer_parameters = {
     "itmax": Int(20),
-    "parameters": Dict({
-        "algorithm_settings": {"tolerance": 1e-8},
-        "initial_parameters": List([0.1, -0.3, 0.7]),
-    })
+    "parameters": Dict(
+        {
+            "algorithm_settings": {"tolerance": 1e-8},
+            "initial_parameters": List(list=[0.1, -0.3, 0.7]),
+        }
+    ),
 }
 
 optimizer = builder.get_optimizer()
