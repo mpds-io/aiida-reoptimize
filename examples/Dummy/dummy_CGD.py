@@ -23,25 +23,25 @@ class ExampleCGD(ConjugateGradientOptimizer):
     extractor = dummy_extractor
 
 
-parameters = Dict({
-    "initial_parameters": List([0.1, -0.1, -0.1]),
-    "algorithm_settings": {
-        "learning_rate": 1e-2,
-        "lr_increase": 1.2,
-        "tolerance": 1e-1,
-        }
-})
-
-__parameters = Dict(
-    dict={
-        "itmax": Int(20),
-        "parameters": parameters,
+parameters = Dict(
+    {
+        "initial_parameters": List(list=[0.1, -0.1, -0.1]),
+        "algorithm_settings": {
+            "learning_rate": 1e-2,
+            "lr_increase": 1.2,
+            "tolerance": 1e-1,
+        },
     }
 )
 
+optimizer_inputs = {
+    "itmax": Int(20),
+    "parameters": parameters,
+}
+
 results = run(
     ExampleCGD,
-    **__parameters,
+    **optimizer_inputs,
 )
 
 print("Optimization Results:")

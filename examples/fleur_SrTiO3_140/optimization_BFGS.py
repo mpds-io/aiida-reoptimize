@@ -57,7 +57,7 @@ required_codes = [fleur_node_label, inpgen_node_label]
 for code_label in required_codes:
     if code_label not in nodes:
         raise KeyError(f"Missing required code: {code_label}")
-    
+
     try:
         fleur_code = load_node(nodes[fleur_node_label])
         inpgen_code = load_node(nodes[inpgen_node_label])
@@ -69,7 +69,7 @@ problem_builder = StructureCalculator(
     structure=initial_structure,
     calculator=FleurScfWorkChain,
     calculator_parameters={"inpgen": inpgen_code, "fleur": fleur_code},
-    structure_keyword="structure",
+    structure_keyword=("structure",),
 )
 
 
@@ -83,21 +83,21 @@ class ExampleBFGS(BFGSOptimizer):
     evaluator_workchain = UserEvaluator
 
 
-parameters = Dict({
-    "algorithm_settings": {"tolerance": 1e-3},
-    "initial_parameters": List([a, c]),
-})
-
-__parameters = Dict(
-    dict={
-        "itmax": Int(20),
-        "parameters": parameters,
+parameters = Dict(
+    {
+        "algorithm_settings": {"tolerance": 1e-3},
+        "initial_parameters": List(list=[a, c]),
     }
 )
 
+optimizer_inputs = {
+    "itmax": Int(20),
+    "parameters": parameters,
+}
+
 results = run(
     ExampleBFGS,
-    **__parameters,
+    **optimizer_inputs,
 )
 
 print("Optimization Results:")

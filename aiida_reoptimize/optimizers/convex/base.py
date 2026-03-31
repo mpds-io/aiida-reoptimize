@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import numpy as np
 from aiida.orm import Float, Int, List
 
@@ -23,9 +25,7 @@ class _GDBase(_OptimizerBase):
             message="Optimization failed to find a valid solution.",
         )
 
-        spec.exit_code(
-            402, "ERROR_STUCK_FOR_TOO_LONG", message="The result is a negative number."
-        )
+        spec.exit_code(402, "ERROR_STUCK_FOR_TOO_LONG", message="The result is a negative number.")
 
     def initialize(self):
         """Initialize context variables and optimization parameters."""
@@ -36,41 +36,96 @@ class _GDBase(_OptimizerBase):
         )
 
         # settings for calculators
-        self.ctx.calculator_parameters = self.inputs["parameters"].get(
-            "calculator_parameters", {}
-        )
+        self.ctx.calculator_parameters = self.inputs["parameters"].get("calculator_parameters", {})
 
-        self.ctx.tolerance = (
-            self.inputs["parameters"]
-            .get("algorithm_settings", {})
-            .get("tolerance")
-            or 1e-3
-        )
+        self.ctx.tolerance = self.inputs["parameters"].get("algorithm_settings", {}).get("tolerance") or 1e-3
         self.ctx.itmax = self.inputs.itmax.value
-        self.ctx.epsilon = (
-            self.inputs["parameters"]
-            .get("algorithm_settings", {})
-            .get("epsilon")
-            or 1e-7
-        )
-        self.ctx.delta = (
-            self.inputs["parameters"]
-            .get("algorithm_settings", {})
-            .get("delta")
-            or 1e-6
-        )
+        self.ctx.epsilon = self.inputs["parameters"].get("algorithm_settings", {}).get("epsilon") or 1e-7
+        self.ctx.delta = self.inputs["parameters"].get("algorithm_settings", {}).get("delta") or 1e-6
         self.ctx.converged = False
         self.ctx.iteration = 1
         self.ctx.history = []
 
-        self.ctx.max_step = (
-            self.inputs["parameters"].get("algorithm_settings", {}).get("max_step", 0.1)
-        )
+        self.ctx.max_step = self.inputs["parameters"].get("algorithm_settings", {}).get("max_step", 0.1)
+
+    def initialize_step_control(self):
+        """Initialize shared controls for step rollback and backoff."""
+
+        settings = self.inputs["parameters"].get("algorithm_settings", {})
+        self.ctx.prev_value = None
+        self.ctx.prev_parameters = self.ctx.parameters.copy()
+        self.ctx.stuck_counter = 0
+        self.ctx.allowed_stuck = settings.get("allowed_stuck", 3)
+        self.ctx.allow_jumps = settings.get("allowing_jumps", True)
+        self.ctx.jump_scale = settings.get("jump_scale", 0.1)
+        self.ctx.step_decrease = settings.get("lr_decrease", 0.5)
+        self.ctx.min_step_rate = settings.get("lr_min", 1e-8)
 
     def clamp_step(self, step):
+        """Clamp component-wise step size to avoid unstable updates."""
+
         if self.ctx.max_step:
-            return np.clip(step, -self.ctx.max_step, self.ctx.max_step)
+            clamped = np.clip(step, -self.ctx.max_step, self.ctx.max_step)
+            if not np.allclose(clamped, step):
+                self.report(f"Step was clamped to +/-{self.ctx.max_step} to prevent instability.")
+            return clamped
         return step
+
+    def handle_worse_objective(self, rate_key: str, on_jump: Callable[[], None] | None = None):
+        """Rollback parameters and reduce step rate when objective worsens."""
+
+        current_value = self.ctx.results[0]
+
+        if self.ctx.prev_value is None:
+            self.ctx.prev_value = current_value
+            self.ctx.prev_parameters = self.ctx.parameters.copy()
+            self.ctx.stuck_counter = 0
+            return None
+
+        if current_value <= self.ctx.prev_value:
+            self.ctx.prev_value = current_value
+            self.ctx.prev_parameters = self.ctx.parameters.copy()
+            self.ctx.stuck_counter = 0
+            return None
+
+        self.report("Objective increased, reversing to previous parameters.")
+        self.ctx.parameters = self.ctx.prev_parameters.copy()
+        self.ctx.stuck_counter += 1
+
+        if self.ctx.stuck_counter >= self.ctx.allowed_stuck:
+            self.report("Stuck for too long, reducing step rate and preparing restart.")
+
+        if hasattr(self.ctx, rate_key):
+            current_rate = getattr(self.ctx, rate_key)
+            new_rate = max(
+                current_rate * self.ctx.step_decrease,
+                self.ctx.min_step_rate,
+            )
+            setattr(self.ctx, rate_key, new_rate)
+            self.report(f"Reduced {rate_key} from {current_rate} to {new_rate}.")
+
+            if np.isclose(new_rate, self.ctx.min_step_rate) and not self.ctx.allow_jumps:
+                self.report(f"Aborting: {rate_key} reached minimum ({self.ctx.min_step_rate}).")
+                return self.exit_codes.ERROR_STUCK_FOR_TOO_LONG
+
+        if self.ctx.stuck_counter >= (self.ctx.allowed_stuck + 1):
+            if self.ctx.allow_jumps:
+                self.report("Jump in random direction to escape local stagnation.")
+                self.ctx.parameters += np.random.uniform(
+                    -self.ctx.jump_scale,
+                    self.ctx.jump_scale,
+                    size=self.ctx.parameters.shape,
+                )
+                self.ctx.stuck_counter = 0
+                self.ctx.prev_value = None
+                self.ctx.prev_parameters = self.ctx.parameters.copy()
+                if on_jump is not None:
+                    on_jump()
+            else:
+                self.report("Aborting: Too many stuck iterations without allowing jumps.")
+                return self.exit_codes.ERROR_STUCK_FOR_TOO_LONG
+
+        return None
 
     def should_continue(self):
         return not self.ctx.converged and self.ctx.iteration <= self.ctx.itmax
@@ -88,10 +143,7 @@ class _GDBase(_OptimizerBase):
     def evaluate_gradient_numerically(self, results):
         """Evaluate the gradient numerically using finite differences."""
         func_value = results[0]
-        gradient = [
-            (results[i + 1] - func_value) / self.ctx.delta
-            for i in range(len(self.ctx.parameters))
-        ]
+        gradient = [(results[i + 1] - func_value) / self.ctx.delta for i in range(len(self.ctx.parameters))]
         gradient = np.array(gradient)
 
         if np.linalg.norm(gradient) < self.ctx.tolerance:
@@ -100,40 +152,32 @@ class _GDBase(_OptimizerBase):
 
     def record_history(self, parameters=None, gradient=None, value=None):
         """Record the current state in the optimization history."""
-        self.ctx.history.append({
-            "iteration": self.ctx.iteration,
-            "parameters": (
-                parameters.copy()
-                if parameters is not None
-                else self.ctx.parameters.copy()
-            ),
-            "gradient_norm": (
-                np.linalg.norm(gradient)
-                if gradient is not None
-                else getattr(self.ctx, "gradient", None)
-            ),
-            "value": (value if value is not None else self.ctx.results[0]),
-            "result_node_pk": self.ctx.raw_results[0]["pk"],
-        })
-
-    def update_parameters(self):
-        raise NotImplementedError(
-            "Subclasses must implement update_parameters()"
+        self.ctx.history.append(
+            {
+                "iteration": self.ctx.iteration,
+                "parameters": (parameters.copy() if parameters is not None else self.ctx.parameters.copy()),
+                "gradient_norm": (
+                    np.linalg.norm(gradient) if gradient is not None else getattr(self.ctx, "gradient", None)
+                ),
+                "value": (value if value is not None else self.ctx.results[0]),
+                "result_node_pk": self.ctx.raw_results[0]["pk"],
+            }
         )
+
+    def update_parameters(self, gradient: np.ndarray):
+        raise NotImplementedError("Subclasses must implement update_parameters()")
 
     def optimization_process(self):
         """Main optimization loop for SDG based algorithms."""
         while self.should_continue():
             targets = self.generate_targets()
-            raw_results = self.run_evaluator(
-                targets, calculator_parameters=self.ctx.calculator_parameters
-            )
+            raw_results = self.run_evaluator(targets, calculator_parameters=self.ctx.calculator_parameters)
             self.ctx.raw_results = raw_results["evaluation_results"]
             self.ctx.results = self.extractor(self.ctx.raw_results)
-            self.ctx.gradient = self.evaluate_gradient_numerically(
-                self.ctx.results
-            )
-            self.update_parameters(self.ctx.gradient)
+            self.ctx.gradient = self.evaluate_gradient_numerically(self.ctx.results)
+            exit_code = self.update_parameters(self.ctx.gradient)
+            if exit_code is not None:
+                return exit_code
 
         if not self.ctx.converged:
             self.report(
@@ -165,6 +209,4 @@ class _GDBase(_OptimizerBase):
         self.out("final_value", Float(self.ctx.results[0]).store())
         self.out("history", List(list=self.ctx.history).store())
         if self.inputs.get_best.value:
-            self.out(
-                "result_node_pk", Int(self.ctx.raw_results[0]["pk"]).store()
-            )
+            self.out("result_node_pk", Int(self.ctx.raw_results[0]["pk"]).store())

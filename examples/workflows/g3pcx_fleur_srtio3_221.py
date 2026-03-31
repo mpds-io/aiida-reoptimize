@@ -1,23 +1,21 @@
 from aiida import load_profile
 from aiida.engine import submit
-from aiida.orm import Dict, Int, List, StructureData
+from aiida.orm import Dict, Int, StructureData
 from ase.spacegroup import crystal
 
 from aiida_reoptimize.workflows.Optimization.FleurSCF import (
-    CDGFleurSCFOptimizer,
+    G3PCXFleurSCFOptimizer,
 )
 
 load_profile()
 
-# Setup structure
-a = 5.51
-c = 7.81
-
+# Cubic SrTiO3, space group Pm-3m (221)
+a = 3.905
 atoms = crystal(
-    ["Sr", "Ti", "O", "O"],
-    basis=[(0, 0, 0.25), (0.0, 0.5, 0.0), (0.2451, 0.7451, 0), (0, 0.5, 0.25)],
-    spacegroup=140,
-    cellpar=[a, a, c, 90, 90, 90],
+    ["Sr", "Ti", "O"],
+    basis=[(0.0, 0.0, 0.0), (0.5, 0.5, 0.5), (0.5, 0.5, 0.0)],
+    spacegroup=221,
+    cellpar=[a, a, a, 90, 90, 90],
 )
 
 optimizer_parameters = {
@@ -25,14 +23,15 @@ optimizer_parameters = {
     "structure": StructureData(ase=atoms),
     "parameters": Dict(
         {
+            "dimensions": 1,
+            "bounds": [[a * 0.8, a * 1.2]],
             "algorithm_settings": {
-                "tolerance": 1e-1,
-                "learning_rate": 1e-2,
-                "lr_increase": 1.2,
-                "lr_decrease": 0.2,
-                "delta": 0.0000529177,
+                "pop_size": 20,
+                "sampling": "LHS",
+                "n_offsprings": 10,
+                "n_parents": 3,
+                "family_size": 2,
             },
-            "initial_parameters": List(list=[a, c]),
             "calculator_parameters": {
                 "codes": {
                     "inpgen": "inpgen@local_machine",
@@ -51,5 +50,5 @@ optimizer_parameters = {
     ),
 }
 
-results = submit(CDGFleurSCFOptimizer, **optimizer_parameters)
-print(f"Submitted CDGFleurSCFOptimizer: {results.pk}")
+result = submit(G3PCXFleurSCFOptimizer, **optimizer_parameters)
+print(f"Submitted G3PCXFleurSCFOptimizer: {result.pk}")

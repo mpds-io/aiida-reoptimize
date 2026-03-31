@@ -21,7 +21,7 @@ class UserProblem(WorkChain):
 
     def run_calc(self):
         x = np.array(self.inputs.x.get_list())
-        self.ctx.result = [np.sum(x**2), np.sum(x**3), np.cos(x)**2]
+        self.ctx.result = [np.sum(x**2), np.sum(x**3), np.cos(x) ** 2]
 
     def finalize(self):
         data_dict = {
@@ -44,21 +44,21 @@ class ExampleBFGS(BFGSOptimizer):
     extractor = dummy_extractor
 
 
-parameters = Dict({
-    "algorithm_settings": {"alpha": 0.9, "beta": 0.8},
-    "initial_parameters": List([0.1, -0.1, -0.2]),
-})
-
-__parameters = Dict(
-    dict={
-        "itmax": Int(20),
-        "parameters": parameters,
+parameters = Dict(
+    {
+        "algorithm_settings": {"alpha": 0.9, "beta": 0.8},
+        "initial_parameters": List(list=[0.1, -0.1, -0.2]),
     }
 )
 
+optimizer_inputs = {
+    "itmax": Int(20),
+    "parameters": parameters,
+}
+
 results = run(
     ExampleBFGS,
-    **__parameters,
+    **optimizer_inputs,
 )
 
 print("Optimization Results:")
@@ -68,5 +68,5 @@ if results:
     print(f"Best node: {results['result_node_pk']}")
 
 print("Optimization history:")
-for iter_ in results['history']:
+for iter_ in results["history"]:
     print(iter_)

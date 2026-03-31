@@ -23,26 +23,21 @@ class ExampleAdam(AdamOptimizer):
     extractor = dummy_extractor
 
 
-parameters = Dict({
-    "algorithm_settings": {
-        "learning_rate": 0.05,
-        "beta1": 0.5,
-        "beta2": 0.999,
-        "delta": 5e-4
-    },
-    "initial_parameters": List([0.3, -0.2, -0.4]),
-})
-
-__parameters = Dict(
-    dict={
-        "itmax": Int(100),
-        "parameters": parameters,
+parameters = Dict(
+    {
+        "algorithm_settings": {"learning_rate": 0.05, "beta1": 0.5, "beta2": 0.999, "delta": 5e-4},
+        "initial_parameters": List(list=[0.3, -0.2, -0.4]),
     }
 )
 
+optimizer_inputs = {
+    "itmax": Int(100),
+    "parameters": parameters,
+}
+
 results = run(
     ExampleAdam,
-    **__parameters,
+    **optimizer_inputs,
 )
 
 print("Optimization Results:")

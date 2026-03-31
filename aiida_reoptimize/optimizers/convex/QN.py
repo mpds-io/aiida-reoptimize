@@ -9,35 +9,27 @@ class BFGSOptimizer(_GDBase):
 
     def initialize(self):
         super().initialize()
+        self.initialize_step_control()
         self.ctx.inv_hessian = np.eye(len(self.ctx.parameters))
         self.ctx.gradient_prev = None
         self.ctx.parameters_prev = None
 
         # Line search parameters
-        self.ctx.alpha = (
-            self.inputs["parameters"]
-            .get("algorithm_settings", {})
-            .get("alpha")
-            or 1.0
-        )
-        self.ctx.beta = (
-            self.inputs["parameters"].get("algorithm_settings", {}).get("beta")
-            or 0.5
-        )
+        self.ctx.alpha = self.inputs["parameters"].get("algorithm_settings", {}).get("alpha") or 1.0
+        self.ctx.beta = self.inputs["parameters"].get("algorithm_settings", {}).get("beta") or 0.5
 
-        self.ctx.sigma = (
-            self.inputs["parameters"]
-            .get("algorithm_settings", {})
-            .get("sigma")
-            or 1e-4
-        )
+        self.ctx.sigma = self.inputs["parameters"].get("algorithm_settings", {}).get("sigma") or 1e-4
 
         self.ctx.linesearch_max_iter = (
-            self.inputs["parameters"]
-            .get("algorithm_settings", {})
-            .get("linesearch_max_iter")
-            or 20
+            self.inputs["parameters"].get("algorithm_settings", {}).get("linesearch_max_iter") or 20
         )
+
+    def _reset_after_jump(self):
+        """Reset BFGS state after a random jump."""
+
+        self.ctx.inv_hessian = np.eye(len(self.ctx.parameters))
+        self.ctx.gradient_prev = None
+        self.ctx.parameters_prev = None
 
     def _line_search(self, direction):
         """
@@ -65,9 +57,7 @@ class BFGSOptimizer(_GDBase):
                 List(trial_targets),
                 calculator_parameters=self.ctx.calculator_parameters,
             )
-            f_trial = self.extractor(raw_trial_results["evaluation_results"])[
-                0
-            ]
+            f_trial = self.extractor(raw_trial_results["evaluation_results"])[0]
             if f_trial <= f0 + sigma * alpha * np.dot(grad, direction):
                 return alpha
             alpha *= beta
@@ -76,7 +66,7 @@ class BFGSOptimizer(_GDBase):
         )
         return self.ctx.alpha * 1e-3
 
-    def update_parameters(self, gradient: np.array):
+    def update_parameters(self, gradient: np.ndarray):
         """Update parameters using BFGS direction and step size."""
 
         self.record_history(
@@ -84,6 +74,13 @@ class BFGSOptimizer(_GDBase):
             gradient=gradient,
             value=self.ctx.results[0],
         )
+
+        exit_code = self.handle_worse_objective(
+            rate_key="alpha",
+            on_jump=self._reset_after_jump,
+        )
+        if exit_code is not None:
+            return exit_code
 
         if self.ctx.iteration == 1:
             # First iteration, no previous gradient/parameters
@@ -96,9 +93,7 @@ class BFGSOptimizer(_GDBase):
                 I = np.eye(len(self.ctx.parameters))  # noqa: E741
                 rho = 1.0 / ys
                 V = I - rho * np.outer(s, y)
-                self.ctx.inv_hessian = (
-                    V @ self.ctx.inv_hessian @ V.T + rho * np.outer(s, s)
-                )
+                self.ctx.inv_hessian = V @ self.ctx.inv_hessian @ V.T + rho * np.outer(s, s)
             direction = -np.dot(self.ctx.inv_hessian, gradient)
 
         step_size = self._line_search(direction)

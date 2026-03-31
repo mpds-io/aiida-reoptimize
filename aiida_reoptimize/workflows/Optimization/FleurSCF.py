@@ -1,36 +1,59 @@
-from ...base.Extractors import BasicExtractor
-from ...optimizers.convex.GD import (
-    AdamOptimizer,
-    ConjugateGradientOptimizer,
-    RMSpropOptimizer,
-)
-from ...optimizers.convex.QN import BFGSOptimizer
-from ...optimizers.PyMOO.PyMOO import PyMOO_Optimizer
+"""Static optimization workchains for FLEUR SCF lattice problems."""
+
 from ..Evaluation.fleur_evaluators import FleurSCFLatticeProblem
+from ._common import (
+    AdamOptimizer,
+    BFGSOptimizer,
+    ConjugateGradientOptimizer,
+    FixedPyMOOAlgorithmMixin,
+    PyMOO_Optimizer,
+    RMSpropOptimizer,
+    StaticOptimizerBinding,
+)
 
 
-class BaseFleurSCFOptimizer:
+class BaseFleurSCFOptimizer(StaticOptimizerBinding):
+    """Bind the generic optimizers to the FLEUR SCF lattice evaluator."""
+
     evaluator_workchain = FleurSCFLatticeProblem
-    extractor = BasicExtractor(
-        node_extractor=lambda x: x["output_scf_wc_para"]["total_energy"]
-    )
+    extractor_path = ("output_scf_wc_para", "total_energy")
 
 
 class AdamFleurSCFOptimizer(BaseFleurSCFOptimizer, AdamOptimizer):
-    pass
+    """Adam optimizer registered for FLEUR SCF lattice optimization."""
 
 
 class CDGFleurSCFOptimizer(BaseFleurSCFOptimizer, ConjugateGradientOptimizer):
-    pass
+    """Conjugate-gradient optimizer registered for FLEUR SCF lattice optimization."""
 
 
 class RMSpropFleurSCFOptimizer(BaseFleurSCFOptimizer, RMSpropOptimizer):
-    pass
+    """RMSprop optimizer registered for FLEUR SCF lattice optimization."""
 
 
 class BFGSFleurSCFOptimizer(BaseFleurSCFOptimizer, BFGSOptimizer):
-    pass
+    """BFGS optimizer registered for FLEUR SCF lattice optimization."""
 
 
 class PyMOOFleurSCFOptimizer(BaseFleurSCFOptimizer, PyMOO_Optimizer):
-    pass
+    """PyMOO-backed optimizer registered for FLEUR SCF lattice optimization."""
+
+
+class G3PCXFleurSCFOptimizer(
+    FixedPyMOOAlgorithmMixin,
+    BaseFleurSCFOptimizer,
+    PyMOO_Optimizer,
+):
+    """Fixed G3PCX PyMOO optimizer for FLEUR SCF lattice optimization."""
+
+    fixed_algorithm_name = "G3PCX"
+
+
+class NRBOFleurSCFOptimizer(
+    FixedPyMOOAlgorithmMixin,
+    BaseFleurSCFOptimizer,
+    PyMOO_Optimizer,
+):
+    """Fixed NRBO PyMOO optimizer for FLEUR SCF lattice optimization."""
+
+    fixed_algorithm_name = "NRBO"

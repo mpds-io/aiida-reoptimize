@@ -24,19 +24,21 @@ class ExampleRMSprop(RMSpropOptimizer):
     extractor = dummy_extractor
 
 
-parameters = Dict({
-    "algorithm_settings": {"learning_rate": 0.1, "rho": 0.5},
-    "initial_parameters": List([1.1, -5.1, -3.2]),
-})
+parameters = Dict(
+    {
+        "algorithm_settings": {"learning_rate": 0.1, "rho": 0.5},
+        "initial_parameters": List(list=[1.1, -5.1, -3.2]),
+    }
+)
 
-__parameters = Dict(dict={
+optimizer_inputs = {
     "itmax": Int(100),
     "parameters": parameters,
-})
+}
 
 results = run(
     ExampleRMSprop,
-    **__parameters,
+    **optimizer_inputs,
 )
 
 print("Optimization Results:")
@@ -47,5 +49,5 @@ if results:
     print(f"Best node: {results['result_node_pk']}")
 
 print("Optimization history:")
-for iter_ in results['history']:
+for iter_ in results["history"]:
     print(iter_)

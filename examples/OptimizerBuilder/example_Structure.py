@@ -12,24 +12,29 @@ from aiida_reoptimize.optimizers.convex.GD import AdamOptimizer
 
 load_profile()
 
-dummy_extractor = BasicExtractor(
-    node_extractor=lambda x: x["output_scf_wc_para"]["total_energy"]
-)
+dummy_extractor = BasicExtractor(node_extractor=lambda x: x["output_scf_wc_para"]["total_energy"])
 
-# Find aiida codes for Fleur and inpgen
-fleur_node_label, inpgen_node_label = "fleur", "inpgen"
-nodes = find_nodes(fleur_node_label, inpgen_node_label)
-required_codes = [fleur_node_label, inpgen_node_label]
 
-for code_label in required_codes:
-    if code_label not in nodes:
-        raise KeyError(f"Missing required code: {code_label}")
+def load_required_codes() -> dict[str, object]:
+    """Load required AiiDA code nodes by configured labels."""
+
+    fleur_label, inpgen_label = "fleur", "inpgen"
+    nodes = find_nodes(fleur_label, inpgen_label)
+
+    missing = [label for label in (fleur_label, inpgen_label) if label not in nodes]
+    if missing:
+        raise KeyError(f"Missing required code labels: {', '.join(missing)}")
 
     try:
-        fleur_code = load_node(nodes[fleur_node_label])
-        inpgen_code = load_node(nodes[inpgen_node_label])
-    except NotExistent as e:
-        raise RuntimeError(f"Failed to load code node: {e}") from e
+        return {
+            "fleur": load_node(nodes[fleur_label]),
+            "inpgen": load_node(nodes[inpgen_label]),
+        }
+    except NotExistent as error:
+        raise RuntimeError(f"Failed to load code node: {error}") from error
+
+
+codes = load_required_codes()
 
 # Setup structure
 a = 5.511
@@ -47,16 +52,18 @@ builder = OptimizerBuilder.from_ase(
     optimizer_workchain=AdamOptimizer,
     calculator_workchain=FleurScfWorkChain,
     extractor=dummy_extractor,
-    calculator_parameters={"inpgen": inpgen_code, "fleur": fleur_code},
+    calculator_parameters={"inpgen": codes["inpgen"], "fleur": codes["fleur"]},
     bulk=atoms,
 )
 
 optimizer_parameters = {
     "itmax": Int(100),
-    "parameters": Dict({
-        "algorithm_settings": {"tolerance": 1e-3},
-        "initial_parameters": List([a, c]),
-    }),
+    "parameters": Dict(
+        {
+            "algorithm_settings": {"tolerance": 1e-3},
+            "initial_parameters": List(list=[a, c]),
+        }
+    ),
 }
 
 optimizer = builder.get_optimizer()

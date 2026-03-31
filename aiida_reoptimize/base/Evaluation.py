@@ -1,13 +1,30 @@
-from typing import Type
+"""Reusable evaluation workchains for optimization workflows.
+
+This module contains generic AiiDA workchains that submit a batch of target
+evaluations and collect the process identifiers and statuses of the launched
+sub-processes. Static structure evaluators additionally generate modified
+structures before dispatching the calculator workchains.
+"""
+
+from typing import Any, Protocol, Type
 
 from aiida.engine import ToContext, WorkChain
-from aiida.orm import Dict, Int, List, StructureData, load_code, load_node
+from aiida.orm import Dict, List, StructureData, load_code, load_node
 from aiida.plugins import DataFactory
 
 from aiida_reoptimize.structure.dynamic_structure import StructureCalculator
 
 
-class __EvalBaseWorkChain(WorkChain):
+class BuilderFactory(Protocol):
+    """Protocol for helpers returning ready-to-submit builders."""
+
+    def get_builder(self, target: Any):
+        """Build a calculator or workchain builder for a target."""
+
+
+class _EvalBaseWorkChain(WorkChain):
+    """Common result-collection logic for batched evaluator workchains."""
+
     @classmethod
     def define(cls, spec):
         """Specify inputs, outputs, and the workchain outline."""
@@ -28,6 +45,25 @@ class __EvalBaseWorkChain(WorkChain):
             help="List of evaluation results for each target",
         )
 
+    def _targets(self) -> list[Any]:
+        """Return targets as a plain Python list."""
+
+        return self.inputs.targets.get_list()
+
+    def _collect_evaluation_results(self) -> list[dict[str, Any]]:
+        """Collect process metadata for all submitted evaluations."""
+
+        results = []
+        for index, _ in enumerate(self._targets()):
+            process = self.ctx[f"eval_{index}"]
+            results.append(
+                {
+                    "pk": process.pk,
+                    "status": "ok" if process.is_finished_ok else "failed",
+                }
+            )
+        return results
+
     def evaluate(self):
         """
         Abstract method for particle evaluations (must be implemented).
@@ -35,22 +71,19 @@ class __EvalBaseWorkChain(WorkChain):
         raise NotImplementedError("Subclasses must implement evaluate()")
 
     def result(self):
-        results = []
-        for i in range(len(self.inputs.targets)):
-            process = self.ctx[f"eval_{i}"]
-            res = {
-                "pk": process.pk,
-                "status": "ok" if process.is_finished_ok else "failed",
-            }
-            results.append(res)
-        self.out("evaluation_results", List(list=results).store())
+        """Store process metadata for the submitted target evaluations."""
+
+        self.out(
+            "evaluation_results",
+            List(list=self._collect_evaluation_results()).store(),
+        )
 
 
-class EvalWorkChainProblem(__EvalBaseWorkChain):
-    """Base class for evaluating objective functions in optimization workflows."""  # noqa: E501
+class EvalWorkChainProblem(_EvalBaseWorkChain):
+    """Evaluate plain parameter targets with a dedicated problem workchain."""
 
-    # Expect to recive a workchain to be optimized, this workchain recive new
-    # parameters and returns the objective function value
+    # Expect to receive a workchain that accepts a single ``x`` input and
+    # returns the objective function value.
     problem_workchain: Type[WorkChain]
 
     @classmethod
@@ -59,25 +92,29 @@ class EvalWorkChainProblem(__EvalBaseWorkChain):
         super().define(spec)
 
     def evaluate(self):
+        """Submit the problem workchain once for each target value."""
+
         target_values = {}
         # This madness appears to be needed to get the correct type
         # for some reason if you pass List[Int] in aiida input it
         # will be transformed into List[int] and, since your workchain
         # x to be Int and not python int, it will crash
         expected_type = self.problem_workchain.spec().inputs["x"].valid_type
-        self.report(f"Evaluating given targets: {self.inputs.targets}")
-        for idx, x in enumerate(self.inputs.targets):
+        targets = self._targets()
+        self.report(f"Evaluating given targets: {targets}")
+        for idx, x in enumerate(targets):
             x_wrapped = expected_type(x)
             future = self.submit(self.problem_workchain, x=x_wrapped)
             target_values[f"eval_{idx}"] = future
         return ToContext(**target_values)
 
 
-class EvalWorkChainStructureProblem(__EvalBaseWorkChain):
-    # This workchain designed specifically using it
-    # with DynamicStructureWorkChainGenerator
-    # (Case when you need to modify complex object and not pass some numbers)
-    problem_builder: Type[object]
+class EvalWorkChainStructureProblem(_EvalBaseWorkChain):
+    """Evaluate structure-like targets by obtaining builders from a helper."""
+
+    # This workchain is designed for generator-like helpers that convert a
+    # target description into a ready-to-submit builder.
+    problem_builder: BuilderFactory
 
     @classmethod
     def define(cls, spec):
@@ -89,8 +126,9 @@ class EvalWorkChainStructureProblem(__EvalBaseWorkChain):
         For each x in targets, use the generator to get a builder and submit it.
         """  # noqa: E501
         target_values = {}
-        self.report(f"Evaluating given targets: {self.inputs.targets}")
-        for i, x in enumerate(self.inputs.targets):
+        targets = self._targets()
+        self.report(f"Evaluating given targets: {targets}")
+        for i, x in enumerate(targets):
             builder = self.problem_builder.get_builder(x)
             future = self.submit(builder)
             target_values[f"eval_{i}"] = future
@@ -98,6 +136,8 @@ class EvalWorkChainStructureProblem(__EvalBaseWorkChain):
 
 
 class _StaticEvalStructureBase(WorkChain):
+    """Base class for static structure evaluators registered as AiiDA workchains."""
+
     calculator_workchain: Type[WorkChain]
 
     @classmethod
@@ -115,9 +155,12 @@ class _StaticEvalStructureBase(WorkChain):
         spec.input(
             "structure_keyword",
             valid_type=List,
-            default=lambda: List([
-                "structure",
-            ]),
+            default=lambda: List(
+                [
+                    "structure",
+                ]
+            ),
+            help="Path to the structure input in the calculator builder.",
         )
 
         spec.input(
@@ -140,13 +183,29 @@ class _StaticEvalStructureBase(WorkChain):
             help="List of evaluation results for each target",
         )
 
+    def _targets(self) -> list[Any]:
+        """Return structure perturbation targets as a Python list."""
+
+        return self.inputs.targets.get_list()
+
+    def _collect_evaluation_results(self) -> list[dict[str, Any]]:
+        """Collect process metadata for all submitted calculator jobs."""
+
+        results = []
+        for index, _ in enumerate(self._targets()):
+            process = self.ctx[f"eval_{index}"]
+            results.append(
+                {
+                    "pk": process.pk,
+                    "status": "ok" if process.is_finished_ok else "failed",
+                }
+            )
+        return results
+
     def load_codes(self, code_dict: dict):
         """
         Load the calculator workchain code from the provided dictionary.
         """
-
-        if not code_dict:
-            raise ValueError("No codes provided in the code dictionary")
 
         loaded_codes = {}
         for key, value in code_dict.items():
@@ -156,9 +215,7 @@ class _StaticEvalStructureBase(WorkChain):
                 elif isinstance(value, int):
                     loaded_codes[key] = load_node(value)
                 else:
-                    raise ValueError(
-                        f"Unsupported code format for {key}: {value}"
-                    )
+                    raise ValueError(f"Unsupported code format for {key}: {value}")
             except Exception as e:
                 raise ValueError(f"Failed to load code for {key}: {e}") from e
         return loaded_codes
@@ -171,23 +228,28 @@ class _StaticEvalStructureBase(WorkChain):
         if basis_name:
             self.report(f"Handling given basis set {basis_name}")
             try:
-                basis_family, _ = DataFactory(
-                    "crystal_dft.basis_family"
-                ).get_or_create(basis_name)
+                basis_family, _ = DataFactory("crystal_dft.basis_family").get_or_create(basis_name)
             except Exception as e:
                 self.report(f"Error loading basis set {basis_name}: {e}")
                 raise e
             calculator_parameters["basis_family"] = basis_family
         return calculator_parameters
 
+    def prepare_calculator_parameters(self) -> dict[str, Any]:
+        """Resolve loadable codes and optional basis families."""
+
+        calculator_parameters = self.inputs.calculator_parameters.get_dict()
+        codes = calculator_parameters.pop("codes", {})
+        if codes:
+            calculator_parameters.update(self.load_codes(codes))
+        return self.handle_basis_family(calculator_parameters)
+
     def generate_structures(self):
         """
         Generate structures based on the input structure and targets.
         This method should be implemented in subclasses to modify the structure.
         """
-        raise NotImplementedError(
-            "Subclasses must implement generate_structures"
-        )
+        raise NotImplementedError("Subclasses must implement generate_structures")
 
     def evaluate(self):
         """
@@ -197,18 +259,17 @@ class _StaticEvalStructureBase(WorkChain):
         raise NotImplementedError("Subclasses must implement evaluate")
 
     def result(self):
-        results = []
-        for i in range(len(self.inputs.targets)):
-            process = self.ctx[f"eval_{i}"]
-            res = {
-                "pk": process.pk,
-                "status": "ok" if process.is_finished_ok else "failed",
-            }
-            results.append(res)
-        self.out("evaluation_results", List(list=results).store())
+        """Store process metadata for the submitted structure evaluations."""
+
+        self.out(
+            "evaluation_results",
+            List(list=self._collect_evaluation_results()).store(),
+        )
 
 
 class StaticEvalLatticeProblem(_StaticEvalStructureBase):
+    """Generate distorted structures and evaluate them with a static workchain."""
+
     def generate_structures(self):
         """
         Generate new structures and builders using StructureCalculator.
@@ -221,13 +282,8 @@ class StaticEvalLatticeProblem(_StaticEvalStructureBase):
         """
 
         self.ctx.builders = []
-        targets = self.inputs.targets.get_list()
-
-        calculator_parameters = self.inputs.calculator_parameters.get_dict()
-        codes = calculator_parameters.pop("codes", {})
-        loaded_codes = self.load_codes(codes)
-        calculator_parameters.update(loaded_codes)
-        calculator_parameters = self.handle_basis_family(calculator_parameters)
+        targets = self._targets()
+        calculator_parameters = self.prepare_calculator_parameters()
 
         structure_calculator = StructureCalculator(
             structure=self.inputs.structure.get_ase(),
@@ -250,74 +306,3 @@ class StaticEvalLatticeProblem(_StaticEvalStructureBase):
             future = self.submit(builder)
             target_values[f"eval_{idx}"] = future
         return ToContext(**target_values)
-
-
-if __name__ == "__main__":
-    import aiida
-    from aiida.engine import run
-    from aiida.orm import Int, load_node
-
-    aiida.load_profile()
-
-    # Defining the basic extractor
-    def result_extractor(results_list, output_key="energy", penalty=1e10):
-        """
-        Extracts results from a list of dicts with 'pk' and 'status'.
-        If status is 'ok', loads the node and returns its output value.
-        If status is not 'ok', returns the penalty value.
-        """
-        extracted = []
-        for item in results_list:
-            if item["status"] == "ok":
-                node = load_node(item["pk"])
-                # Assumes the output is a single value node (e.g., Int, Float)
-                value = node.outputs[output_key].value
-                extracted.append(value)
-            else:
-                extracted.append(penalty)
-        return extracted
-
-    class DummyProblemWorkChain(WorkChain):
-        @classmethod
-        def define(cls, spec):
-            super().define(spec)
-            spec.input("x", valid_type=Int)
-
-            spec.outline(cls.evaluate)
-
-            spec.output("energy", valid_type=Int)
-
-        def evaluate(self):
-            self.out("energy", Int(self.inputs.x.value**2).store())
-
-    class DummyGenerator:
-        def get_builder(self, x):
-            builder = DummyProblemWorkChain.get_builder()
-            # You have to be sure that you send value of correct type
-            builder.x = Int(x)
-            return builder
-
-    # Run the EvalWorkChainProblem with the DummyProblemWorkChain
-    class UserEvalWorkChainProblem(EvalWorkChainProblem):
-        problem_workchain = DummyProblemWorkChain
-
-    int_list = List(list=[i for i in range(5)])  # Example list of x values
-    result = run(UserEvalWorkChainProblem, targets=int_list)
-    print(result["evaluation_results"])
-    print(
-        result_extractor(
-            result["evaluation_results"], output_key="energy", penalty=1e10
-        )
-    )
-
-    # Run the EvalWorkChainStructureProblem with the DummyGenerator
-    class UserEvalWorkChainStructureProblem(EvalWorkChainStructureProblem):
-        problem_builder = DummyGenerator()
-
-    result = run(UserEvalWorkChainStructureProblem, targets=int_list)
-    print(result["evaluation_results"])
-    print(
-        result_extractor(
-            result["evaluation_results"], output_key="energy", penalty=1e10
-        )
-    )
