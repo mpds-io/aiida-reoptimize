@@ -23,7 +23,6 @@ optimizer_parameters = {
     "structure": StructureData(ase=atoms),
     "parameters": Dict(
         {
-            "dimensions": 1,
             "bounds": [[a * 0.8, a * 1.2]],
             "algorithm_settings": {"pop_size": 5},
             "calculator_parameters": {
