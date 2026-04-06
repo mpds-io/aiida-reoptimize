@@ -132,7 +132,7 @@ class _PyMOO_Base(_OptimizerBase):
 
             if self.ctx.tol is not None and len(recent_best_values) == 3:
                 spread = max(recent_best_values) - min(recent_best_values)
-                if spread < self.ctx.tol:
+                if 0 < spread < self.ctx.tol:
                     self.ctx.terminated_by_tol = True
                     self.report(
                         f"Stopping early: spread of last 3 best values ({spread:.6e}) is below tol={self.ctx.tol:.6e}."
