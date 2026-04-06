@@ -160,8 +160,12 @@ The `PyMOO_Optimizer` class requires the following parameters as input:
 **Inside `parameters` (`Dict`):**
 
 - `algorithm_settings` (`Dict`): Algorithm-specific settings (see below)
-- `bounds` (`List`): List of [min, max] for each variable
-- `dimensions` (`Int`): Number of variables to optimize
+- `tol` (`float`, optional): early-stop threshold. Optimization stops successfully when the spread of the best objective values across 3 consecutive iterations is smaller than `tol`.
+- `bounds` (`float | List[List[float, float]]`):
+  - scalar multiplier `b`: bounds for each parameter `p` become `(-b*p, b*p)`
+  - explicit list of `[min, max]` pairs for each variable
+
+The number of optimized variables is inferred automatically from structure parameters (Bravais lattice), with fallback to `initial_parameters` or list-form `bounds`.
 
 **Supported PyMOO algorithms (`algorithm_name`):**
 
@@ -200,8 +204,16 @@ parameters = Dict({
         "mutation": "PM",
         "selection": "TOS"
     },
-    "bounds": [[0, 1], [0, 1]],
-    "dimensions": 2
+      "bounds": [[0, 1], [0, 1]]
+    })
+
+    # or scalar bounds around inferred parameters
+    parameters = Dict({
+      "algorithm_name": "GA",
+      "algorithm_settings": {"pop_size": 50},
+      "tol": 1e-4,
+      "bounds": 0.1
+    })
 ```
 
 
