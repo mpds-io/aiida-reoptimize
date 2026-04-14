@@ -1,4 +1,3 @@
-
 import re
 from typing import Any, Dict, List, Tuple, Union
 
@@ -63,10 +62,7 @@ def check_magmoms_ase(atoms: Atoms) -> bool:
     Returns:
         True if any atom has a non-zero magnetic moment, False otherwise.
     """
-    return any(
-        any(atom.magmom) if hasattr(atom.magmom, "__iter__") else atom.magmom
-        for atom in atoms
-    )
+    return any(any(atom.magmom) if hasattr(atom.magmom, "__iter__") else atom.magmom for atom in atoms)
 
 
 def numpy_to_python(value: Union[np.ndarray, float]) -> Union[List, float]:
@@ -154,12 +150,7 @@ def spg_magnetism_handling(cell: Tuple[np.ndarray, ...], return_raw=False):
     data_for_mapping = []
 
     # Create mapping data for unique types/tensors
-    for i in zip(
-        mag_data_set.std_types,
-        mag_data_set.std_tensors,
-        mag_data_set.equivalent_atoms,
-        strict=True
-    ):
+    for i in zip(mag_data_set.std_types, mag_data_set.std_tensors, mag_data_set.equivalent_atoms, strict=True):
         data_for_mapping.append(i)
 
     # Convert to set and create mapping
@@ -192,18 +183,18 @@ def spg_magnetism_handling(cell: Tuple[np.ndarray, ...], return_raw=False):
 
     if return_raw:
         return (
-            new_prim_cell_[0],                         # lattice
-            new_prim_cell_[1],                         # scaled positions
-            restored_types,                            # real atomic types
-            new_prim_cell_[2],                         # mapped atomic types
-            restored_magmoms,                          # real magnetic moments
-        ), {str(v): k for k, v in mapper.items()}      # mapping dictionary
+            new_prim_cell_[0],  # lattice
+            new_prim_cell_[1],  # scaled positions
+            restored_types,  # real atomic types
+            new_prim_cell_[2],  # mapped atomic types
+            restored_magmoms,  # real magnetic moments
+        ), {str(v): k for k, v in mapper.items()}  # mapping dictionary
 
     return (
         new_prim_cell_[0],  # lattice
         new_prim_cell_[1],  # scaled positions
-        restored_types,     # real atomic types
-        restored_magmoms,   # real magnetic moments
+        restored_types,  # real atomic types
+        restored_magmoms,  # real magnetic moments
     )
 
 
@@ -324,11 +315,7 @@ def numbers_to_symbols(numbers: List[int]) -> List[str]:
     Returns:
         List of chemical symbols
     """
-    return [
-        chemical_symbols[num]
-        for num in numbers
-        if 1 <= num < len(chemical_symbols)
-    ]
+    return [chemical_symbols[num] for num in numbers if 1 <= num < len(chemical_symbols)]
 
 
 def ase_to_struct_prim(atoms: Atoms) -> Tuple[StructureData, Dict[int, Tuple]]:
@@ -349,13 +336,9 @@ def ase_to_struct_prim(atoms: Atoms) -> Tuple[StructureData, Dict[int, Tuple]]:
         cell_raw = convert_ase_to_spg(atoms)
         # Expects tuple of length 5 and dict
         # (lattice, scaled_positions, numbers, kinds, magmoms), mapper
-        cell_with_kinds, mapper = spg_magnetism_handling(
-            cell_raw, return_raw=True
-        )
+        cell_with_kinds, mapper = spg_magnetism_handling(cell_raw, return_raw=True)
         atom_symbols = numbers_to_symbols(cell_with_kinds[2])
-        atom_kinds = [
-            f"{sym}{num}" for sym, num in zip(atom_symbols, cell_with_kinds[3], strict=True)
-        ]
+        atom_kinds = [f"{sym}{num}" for sym, num in zip(atom_symbols, cell_with_kinds[3], strict=True)]
         # XXX Should atomic position values cropped?
         # Tests shows that it's fine without cropping, but if
         # numerical error will be bigger than 1e-5, it can cause problems
@@ -370,9 +353,7 @@ def ase_to_struct_prim(atoms: Atoms) -> Tuple[StructureData, Dict[int, Tuple]]:
     return structure, mapper
 
 
-def reverse_structure_data(
-    structure: StructureData, mapper: Dict[int, Tuple], pbc=None
-) -> Atoms:
+def reverse_structure_data(structure: StructureData, mapper: Dict[int, Tuple], pbc=None) -> Atoms:
     """
     Flexible version with customizable periodic boundary conditions.
 
@@ -411,9 +392,7 @@ def reverse_structure_data(
             symbol = symbol_match.group(1)
             symbols.append(symbol)
         else:
-            raise ValueError(
-                f"Cannot extract symbol from kind name: {kind_name}"
-            )
+            raise ValueError(f"Cannot extract symbol from kind name: {kind_name}")
 
         # Extract magnetic moment from kind name
         match = re.search(r"[A-Za-z]+(\d+)$", kind_name)
@@ -426,9 +405,7 @@ def reverse_structure_data(
             else:
                 magnetic_moments.append(0.0)
         else:
-            raise ValueError(
-                f"Cannot extract number from kind name: {kind_name}"
-            )
+            raise ValueError(f"Cannot extract number from kind name: {kind_name}")
 
     # Create ASE Atoms object
     atoms = Atoms(symbols=symbols, positions=positions, cell=cell, pbc=pbc)

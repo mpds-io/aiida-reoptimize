@@ -104,8 +104,13 @@ def run_optimizer(name: str, optimizer_cls, settings: dict, initial: list[float]
 
 def parse_args():
     parser = ArgumentParser(description="Validate all convex optimizers on f(x)=sum(x_i^2).")
-    parser.add_argument("--dimensions", type=int, default=1, help="Problem dimensionality.")
-    parser.add_argument("--initial", type=float, default=2.0, help="Initial absolute value for each dimension.")
+    parser.add_argument(
+        "--initial",
+        type=float,
+        nargs="+",
+        default=[2.0],
+        help="Initial parameter values (space-separated list).",
+    )
     parser.add_argument("--itmax", type=int, default=40, help="Maximum iterations for each optimizer.")
     parser.add_argument("--tolerance-x", type=float, default=5e-2, help="Tolerance for ||x*||_2.")
     parser.add_argument("--tolerance-f", type=float, default=1e-3, help="Tolerance for f(x*).")
@@ -137,10 +142,10 @@ def parse_args():
 
 def main():
     args = parse_args()
-    if args.dimensions < 1:
-        raise ValueError("--dimensions must be >= 1")
+    if len(args.initial) < 1:
+        raise ValueError("--initial must contain at least one value")
 
-    initial = [args.initial] * args.dimensions
+    initial = args.initial
 
     checks = [
         (
@@ -209,7 +214,7 @@ def main():
 
     print("Running convex optimizers on f(x)=sum(x_i^2)")
     print(
-        f"Dimensions={args.dimensions}, initial={initial}, itmax={args.itmax}, "
+        f"initial={initial}, itmax={args.itmax}, "
         f"tol_x={args.tolerance_x}, tol_f={args.tolerance_f}, "
         f"algo_tol={args.algorithm_tolerance}, delta={args.delta}, "
         f"allowing_jumps={args.allow_jumps}, only={args.only or 'all'}"

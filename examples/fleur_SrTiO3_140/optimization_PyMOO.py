@@ -85,8 +85,7 @@ class ExamplePyMOO(PyMOO_Optimizer):
 
 parameters = Dict(
     {
-        "dimensions": 2,
-        "bounds": [[a - a * 0.1, a + a * 0.1], [c - c * 0.1, c + c * 0.1]],
+        "bounds": 0.1,
         "algorithm_settings": {"pop_size": 2},
     }
 )

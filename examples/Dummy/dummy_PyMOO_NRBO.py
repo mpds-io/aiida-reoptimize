@@ -9,11 +9,11 @@ from aiida_reoptimize.problems.problems import Sphere
 
 load_profile()
 
-# Setup extracor
+# Setup extractor
 dummy_extractor = BasicExtractor(node_extractor=lambda x: x["value"])
 
 
-# setup Evaluator
+# Setup evaluator
 class UserEvaluator(EvalWorkChainProblem):
     problem_workchain = Sphere
 
@@ -25,16 +25,21 @@ class ExamplePyMOO(PyMOO_Optimizer):
 
 parameters = Dict(
     {
-        "tol": 1e-4,
         "bounds": [[-1.0, 3.0], [-5.0, 4.0], [-2.0, 1.0]],
-        "algorithm_settings": {"pop_size": 20, "c1": 2.0, "c2": 2.0, "w": 0.5},
+        "tol": 1e-4,
+        "algorithm_settings": {
+            "pop_size": 20,
+            "sampling": "LHS",
+            "max_iteration": 200,
+            "deciding_factor": 0.6,
+        },
     }
 )
 
 optimizer_inputs = {
     "itmax": Int(30),
     "parameters": parameters,
-    "algorithm_name": Str("PSO"),
+    "algorithm_name": Str("NRBO"),
 }
 
 results = run(

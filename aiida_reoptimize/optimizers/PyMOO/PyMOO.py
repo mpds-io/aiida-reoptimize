@@ -8,6 +8,7 @@ from pymoo.core.problem import Problem
 from pymoo.problems.static import StaticProblem
 
 from aiida_reoptimize.optimizers.OptimizerBase import _OptimizerBase
+from aiida_reoptimize.optimizers.parameter_utils import prepare_optimization_parameters
 from aiida_reoptimize.optimizers.PyMOO.Builder import AlgorithmBuilder
 
 
@@ -23,25 +24,38 @@ class _PyMOO_Base(_OptimizerBase):
         spec.input(
             "parameters",
             valid_type=Dict,
-            help="Optimization parameters including dimensions, \
-                bounds, and algorithm settings.",
+            help="Optimization parameters including bounds, optional tol, and algorithm settings.",
         )
         spec.input("itmax", valid_type=Int, help="Maximum number of iterations.")
 
     def initialize(self):
         """Initialize most basic parameters."""
         parameters_dict = self.inputs.parameters.get_dict()
+        normalized = prepare_optimization_parameters(
+            parameters_dict,
+            structure=self.inputs.get("structure"),
+            require_bounds=True,
+            require_initial_parameters=False,
+        )
 
         self.ctx.iteration = 0
         self.ctx.max_iterations = self.inputs.itmax.value
-        self.ctx.dimensions = parameters_dict["dimensions"]
-        self.ctx.bounds = np.array(parameters_dict["bounds"])
-        self.ctx.algorithm_settings = parameters_dict.get("algorithm_settings", {})
+        self.ctx.dimensions = normalized["dimensions"]
+        self.ctx.bounds = normalized["bounds"]
+        algorithm_settings = dict(parameters_dict.get("algorithm_settings", {}))
+        tol = parameters_dict.get("tol", algorithm_settings.pop("tol", None))
+        if tol is not None:
+            tol = float(tol)
+            if not np.isfinite(tol) or tol < 0:
+                raise ValueError("'tol' must be a finite non-negative number.")
+        self.ctx.tol = tol
+        self.ctx.algorithm_settings = algorithm_settings
         calculator_parameters = parameters_dict.get("calculator_parameters")
         self.ctx.calculator_parameters = Dict(dict=calculator_parameters) if calculator_parameters is not None else None
 
         self.ctx.algorithm_name = self.inputs.algorithm_name.value
         self.ctx.history = []
+        self.ctx.terminated_by_tol = False
 
     def define_problem(self) -> Problem:
         """Define a PyMOO problem instance."""
@@ -68,9 +82,12 @@ class _PyMOO_Base(_OptimizerBase):
 
         best_value = None
         best_pk = None
+        best_position = None
+        recent_best_values = []
 
         while self.check_itmax():
             pop = algorithm.ask()
+            pop_x = np.array(pop.get("X"), dtype=np.float64)
             targets = List(list=pop.get("X").tolist())
             run_kwargs = {}
             if self.ctx.calculator_parameters is not None:
@@ -86,13 +103,19 @@ class _PyMOO_Base(_OptimizerBase):
 
             # Find best value and pk in this batch
             min_idx = int(np.argmin(results))
-            min_value = results[min_idx]
+            min_value = float(results[min_idx])
             min_pk = node_pks[min_idx] if node_pks[min_idx] is not None else None
+            min_position = pop_x[min_idx].copy()
 
             # Update global best
             if best_value is None or min_value < best_value:
                 best_value = min_value
                 best_pk = min_pk
+                best_position = min_position
+
+            recent_best_values.append(min_value)
+            if len(recent_best_values) > 3:
+                recent_best_values = recent_best_values[-3:]
 
             # Record history for this iteration
             self.ctx.history.append(
@@ -107,11 +130,27 @@ class _PyMOO_Base(_OptimizerBase):
             Evaluator().eval(static, pop)
             algorithm.tell(infills=pop)
 
+            if self.ctx.tol is not None and len(recent_best_values) == 3:
+                spread = max(recent_best_values) - min(recent_best_values)
+                # add zero to avoid stuck
+                if 0 < spread < self.ctx.tol:
+                    self.ctx.terminated_by_tol = True
+                    self.report(
+                        f"Stopping early: spread of last 3 best values ({spread:.6e}) is below tol={self.ctx.tol:.6e}."
+                    )
+                    self.ctx.iteration += 1
+                    break
+
             self.report(f"Iteration {self.ctx.iteration}: {targets}")
             self.ctx.iteration += 1
 
-        self.ctx["best_position"] = algorithm.result().X
-        self.ctx["best_value"] = algorithm.result().F
+        if best_position is None or best_value is None:
+            result = algorithm.result()
+            self.ctx["best_position"] = result.X
+            self.ctx["best_value"] = result.F
+        else:
+            self.ctx["best_position"] = best_position
+            self.ctx["best_value"] = best_value
         self.ctx["best_node_pk"] = best_pk
 
     def finalize(self):
@@ -129,7 +168,7 @@ class _PyMOO_Base(_OptimizerBase):
         if self.inputs.get_best.value:
             self.out("result_node_pk", Int(best_node_pk).store())
 
-    def define_algorithm(self):
+    def define_algorithm(self, problem):
         raise NotImplementedError("Subclasses must implement define_algorithm()")
 
 

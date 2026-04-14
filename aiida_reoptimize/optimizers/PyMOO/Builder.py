@@ -81,7 +81,7 @@ class AlgorithmBuilder:
             "pertube_best",
         ],
         # Keep this conservative to avoid passing unsupported kwargs to NRBO
-        "NRBO": ["pop_size", "n_offsprings", "sampling"],
+        "NRBO": ["pop_size", "sampling", "deciding_factor", "max_iteration", "repair"],
     }
 
     # TODO add cmaes
@@ -145,4 +145,10 @@ class AlgorithmBuilder:
 
         keywords.update(AlgorithmBuilder.__process_kwargs(algorithm_name, **kwargs))  # noqa: E501
         algorithm_class = AlgorithmBuilder.ALGORITHMS[algorithm_name]
+
+        # NRBO internally manages iteration controls and passing "termination"
+        # can conflict with its constructor chain.
+        if algorithm_name == "NRBO":
+            keywords.pop("termination", None)
+
         return algorithm_class(**keywords)
