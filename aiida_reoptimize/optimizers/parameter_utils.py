@@ -45,11 +45,8 @@ def _normalize_bounds_from_scalar(scale: float, parameters: np.ndarray) -> np.nd
 
     normalized = []
     for parameter in parameters:
-        if np.isclose(parameter, 0.0):
-            low, high = -scale, scale
-        else:
-            edge = scale * parameter
-            low, high = min(-edge, edge), max(-edge, edge)
+        low_scale, high_scale = (1 - scale, 1 + scale)
+        low, high = low_scale * parameter, high_scale * parameter
         normalized.append([low, high])
 
     return np.array(normalized, dtype=np.float64)
