@@ -70,5 +70,8 @@ dev = [
     "ruff>=0.6.9,<0.7",
 ]
 
+[tool.setuptools.packages.find]
+include = ["aiida_reoptimize*"]
+
 [tool.uv]
 default-groups = ["dev"]
