@@ -2,11 +2,11 @@ import sys
 
 from aiida import load_profile
 from aiida.engine import submit
-from aiida.orm import Dict, Int, StructureData
+from aiida.orm import Dict, Int, List, StructureData
 
 from aiida_reoptimize.structure.MPDS_structure import get_geometry_MPDS
 from aiida_reoptimize.workflows.Optimization.FleurSCF import (
-    NRBOFleurSCFOptimizer,
+    CDGFleurSCFOptimizer,
 )
 
 load_profile()
@@ -25,14 +25,20 @@ else:
 sgs = int(sgs)
 
 atoms = get_geometry_MPDS(({"formulae": formula, "sgs": sgs}))
-
+lattice_parameters = [float(value) for value in atoms.cell.get_bravais_lattice().vars().values()]
 optimizer_parameters = {
     "itmax": Int(100),
     "structure": StructureData(ase=atoms),
     "parameters": Dict(
         {
-            "bounds": 0.2,
-            "algorithm_settings": {"pop_size": 5, "tol": 1e-3},
+            "algorithm_settings": {
+                "tolerance": 1e-1,
+                "learning_rate": 1e-2,
+                "lr_increase": 1.2,
+                "lr_decrease": 0.2,
+                "delta": 0.0000529177,
+            },
+            "initial_parameters": List(list=lattice_parameters),
             "calculator_parameters": {
                 "codes": {
                     "inpgen": "inpgen@local_machine",
@@ -51,5 +57,5 @@ optimizer_parameters = {
     ),
 }
 
-result = submit(NRBOFleurSCFOptimizer, **optimizer_parameters)
-print(f"Submitted NRBOFleurSCFOptimizer: {result.pk}")
+results = submit(CDGFleurSCFOptimizer, **optimizer_parameters)
+print(f"Submitted CDGFleurSCFOptimizer: {results.pk}")

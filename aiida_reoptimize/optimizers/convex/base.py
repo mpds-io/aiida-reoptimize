@@ -4,6 +4,7 @@ import numpy as np
 from aiida.orm import Float, Int, List
 
 from ..OptimizerBase import _OptimizerBase
+from ..result_utils import ensure_population_has_valid_results
 
 
 class _GDBase(_OptimizerBase):
@@ -174,6 +175,14 @@ class _GDBase(_OptimizerBase):
             raw_results = self.run_evaluator(targets, calculator_parameters=self.ctx.calculator_parameters)
             self.ctx.raw_results = raw_results["evaluation_results"]
             self.ctx.results = self.extractor(self.ctx.raw_results)
+            exit_code = ensure_population_has_valid_results(
+                self,
+                self.ctx.results,
+                raw_results=self.ctx.raw_results,
+                context=f"iteration {self.ctx.iteration}",
+            )
+            if exit_code is not None:
+                return exit_code
             self.ctx.gradient = self.evaluate_gradient_numerically(self.ctx.results)
             exit_code = self.update_parameters(self.ctx.gradient)
             if exit_code is not None:

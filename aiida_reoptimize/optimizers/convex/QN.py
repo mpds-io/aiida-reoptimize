@@ -1,6 +1,7 @@
 import numpy as np
 from aiida.orm import List
 
+from ..result_utils import ensure_population_has_valid_results
 from .base import _GDBase
 
 
@@ -51,13 +52,20 @@ class BFGSOptimizer(_GDBase):
             self.report(f"Performing line search iteration {_ + 1}")
             trial_params = params + alpha * direction
             trial_targets = [trial_params.tolist()]
-            # TODO check if i need a exception handling here.
-            # TODO add a parameters shift if all calculations a failed
             raw_trial_results = self.run_evaluator(
                 List(trial_targets),
                 calculator_parameters=self.ctx.calculator_parameters,
             )
-            f_trial = self.extractor(raw_trial_results["evaluation_results"])[0]
+            extracted_trial_results = self.extractor(raw_trial_results["evaluation_results"])
+            exit_code = ensure_population_has_valid_results(
+                self,
+                extracted_trial_results,
+                raw_results=raw_trial_results["evaluation_results"],
+                context=f"line search iteration {_ + 1}",
+            )
+            if exit_code is not None:
+                return exit_code
+            f_trial = extracted_trial_results[0]
             if f_trial <= f0 + sigma * alpha * np.dot(grad, direction):
                 return alpha
             alpha *= beta
@@ -97,6 +105,8 @@ class BFGSOptimizer(_GDBase):
             direction = -np.dot(self.ctx.inv_hessian, gradient)
 
         step_size = self._line_search(direction)
+        if hasattr(step_size, "status") and step_size.status != 0:
+            return step_size
 
         self.report(f"Current step size is {step_size}")
         self.ctx.parameters_prev = self.ctx.parameters.copy()

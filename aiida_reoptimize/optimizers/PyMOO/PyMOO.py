@@ -10,6 +10,7 @@ from pymoo.problems.static import StaticProblem
 from aiida_reoptimize.optimizers.OptimizerBase import _OptimizerBase
 from aiida_reoptimize.optimizers.parameter_utils import prepare_optimization_parameters
 from aiida_reoptimize.optimizers.PyMOO.Builder import AlgorithmBuilder
+from aiida_reoptimize.optimizers.result_utils import ensure_population_has_valid_results
 
 
 class _PyMOO_Base(_OptimizerBase):
@@ -27,6 +28,11 @@ class _PyMOO_Base(_OptimizerBase):
             help="Optimization parameters including bounds, optional tol, and algorithm settings.",
         )
         spec.input("itmax", valid_type=Int, help="Maximum number of iterations.")
+        spec.exit_code(
+            401,
+            "ERROR_NO_VALID_SOLUTION",
+            message="Optimization failed to find a valid solution.",
+        )
 
     def initialize(self):
         """Initialize most basic parameters."""
@@ -94,6 +100,14 @@ class _PyMOO_Base(_OptimizerBase):
                 run_kwargs["calculator_parameters"] = self.ctx.calculator_parameters
             raw_results = self.run_evaluator(targets, **run_kwargs)
             results = self.extractor(raw_results["evaluation_results"])
+            exit_code = ensure_population_has_valid_results(
+                self,
+                results,
+                raw_results=raw_results["evaluation_results"],
+                context=f"iteration {self.ctx.iteration}",
+            )
+            if exit_code is not None:
+                return exit_code
 
             # Extract PKs for each result
             node_pks = [
@@ -162,6 +176,8 @@ class _PyMOO_Base(_OptimizerBase):
             best_position = best_position.tolist()
         if hasattr(best_value, "item"):
             best_value = float(best_value.item())
+        if best_value == self.extractor.get_penalty():
+            return self.exit_codes.ERROR_NO_VALID_SOLUTION
         self.out("optimized_parameters", List(list=best_position).store())
         self.out("final_value", Float(best_value).store())
         self.out("history", List(self.ctx.history).store())
