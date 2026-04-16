@@ -30,13 +30,13 @@ class _GDBase(_OptimizerBase):
 
     def initialize(self):
         """Initialize context variables and optimization parameters."""
-        # structural parameters
+        super().initialize()
+
         self.ctx.parameters = np.array(
             self.inputs["parameters"]["initial_parameters"],
             dtype=np.float64,
         )
 
-        # settings for calculators
         self.ctx.calculator_parameters = self.inputs["parameters"].get("calculator_parameters", {})
 
         self.ctx.tolerance = self.inputs["parameters"].get("algorithm_settings", {}).get("tolerance") or 1e-3
@@ -45,7 +45,6 @@ class _GDBase(_OptimizerBase):
         self.ctx.delta = self.inputs["parameters"].get("algorithm_settings", {}).get("delta") or 1e-6
         self.ctx.converged = False
         self.ctx.iteration = 1
-        self.ctx.history = []
 
         self.ctx.max_step = self.inputs["parameters"].get("algorithm_settings", {}).get("max_step", 0.1)
 
@@ -151,19 +150,23 @@ class _GDBase(_OptimizerBase):
             self.ctx.converged = True
         return gradient
 
-    def record_history(self, parameters=None, gradient=None, value=None):
+    def record_history(
+        self, parameters=None, gradient=None, value=None, result_node_pk=None, step_rate=None, step=None
+    ):
         """Record the current state in the optimization history."""
-        self.ctx.history.append(
-            {
-                "iteration": self.ctx.iteration,
-                "parameters": (parameters.copy() if parameters is not None else self.ctx.parameters.copy()),
-                "gradient_norm": (
-                    np.linalg.norm(gradient) if gradient is not None else getattr(self.ctx, "gradient", None)
-                ),
-                "value": (value if value is not None else self.ctx.results[0]),
-                "result_node_pk": self.ctx.raw_results[0]["pk"],
-            }
+        entry = super().record_history(
+            iteration=self.ctx.iteration,
+            value=value if value is not None else self.ctx.results[0],
+            result_node_pk=result_node_pk if result_node_pk is not None else self.ctx.raw_results[0]["pk"],
         )
+        entry["parameters"] = parameters.copy() if parameters is not None else self.ctx.parameters.copy()
+        entry["gradient_norm"] = (
+            np.linalg.norm(gradient) if gradient is not None else getattr(self.ctx, "gradient", None)
+        )
+        if step_rate is not None:
+            entry["step_rate"] = step_rate
+        if step is not None:
+            entry["step"] = step.copy() if isinstance(step, np.ndarray) else step
 
     def update_parameters(self, gradient: np.ndarray):
         raise NotImplementedError("Subclasses must implement update_parameters()")
@@ -200,12 +203,28 @@ class _GDBase(_OptimizerBase):
 
     def report_progress(self):
         """Report the current progress of the optimization."""
-        self.report(
-            f"\nIteration {self.ctx.iteration}/{self.ctx.itmax}:\n"
-            f"Parameters: {self.ctx.parameters},\n"
-            f"Gradient norm: {np.linalg.norm(self.ctx.gradient)},\n"
-            f"Objective value: {self.ctx.results[0]}"
-        )
+        if not self.ctx.history:
+            return
+        entry = self.ctx.history[-1]
+        grad_norm = entry.get("gradient_norm")
+        step_rate = entry.get("step_rate")
+        step = entry.get("step")
+        step_norm = np.linalg.norm(step) if step is not None else None
+
+        parts = [
+            f"Iteration {entry['iteration']}/{self.ctx.itmax}",
+            f"params={self.ctx.parameters}",
+            f"grad_norm={grad_norm:.6e}" if grad_norm is not None else "grad_norm=N/A",
+            f"value={entry['value']:.6e}",
+        ]
+        if step_rate is not None:
+            parts.append(f"step_rate={step_rate:.6e}")
+        if step_norm is not None:
+            parts.append(f"step_norm={step_norm:.6e}")
+        if entry.get("result_node_pk") is not None:
+            parts.append(f"pk={entry['result_node_pk']}")
+
+        self.report("\n".join(parts))
 
     def finalize(self):
         if self.ctx.results[0] == self.extractor.get_penalty():
