@@ -175,3 +175,11 @@ cython_debug/
 
 # VSCode
 .vscode/*
+
+# opencode
+.opencode/
+node_modules
+openspec/
+opencode.json
+package-lock.json
+package.json
