@@ -36,6 +36,8 @@ class _PyMOO_Base(_OptimizerBase):
 
     def initialize(self):
         """Initialize most basic parameters."""
+        super().initialize()
+
         parameters_dict = self.inputs.parameters.get_dict()
         normalized = prepare_optimization_parameters(
             parameters_dict,
@@ -60,8 +62,26 @@ class _PyMOO_Base(_OptimizerBase):
         self.ctx.calculator_parameters = Dict(dict=calculator_parameters) if calculator_parameters is not None else None
 
         self.ctx.algorithm_name = self.inputs.algorithm_name.value
-        self.ctx.history = []
         self.ctx.terminated_by_tol = False
+
+    def report_progress(self):
+        if not self.ctx.history:
+            return
+        entry = self.ctx.history[-1]
+        best_pos = entry.get("best_position")
+        positions = entry.get("positions")
+
+        parts = [
+            f"Iteration {entry['iteration']}/{self.ctx.max_iterations}",
+            f"best_value={entry['value']:.6e}",
+            f"best_position={best_pos}" if best_pos is not None else "best_position=N/A",
+        ]
+        if positions is not None:
+            parts.append(f"population_size={len(positions)}")
+        if entry.get("result_node_pk") is not None:
+            parts.append(f"pk={entry['result_node_pk']}")
+
+        self.report(" | ".join(parts))
 
     def define_problem(self) -> Problem:
         """Define a PyMOO problem instance."""
@@ -131,14 +151,13 @@ class _PyMOO_Base(_OptimizerBase):
             if len(recent_best_values) > 3:
                 recent_best_values = recent_best_values[-3:]
 
-            # Record history for this iteration
-            self.ctx.history.append(
-                {
-                    "iteration": self.ctx.iteration,
-                    "best_value": min_value,
-                    "best_pk": min_pk,
-                }
+            entry = self.record_history(
+                iteration=self.ctx.iteration,
+                value=min_value,
+                result_node_pk=min_pk,
             )
+            entry["best_position"] = min_position.tolist()
+            entry["positions"] = pop_x.tolist()
 
             static = StaticProblem(problem, F=np.array(results))
             Evaluator().eval(static, pop)
@@ -155,7 +174,7 @@ class _PyMOO_Base(_OptimizerBase):
                     self.ctx.iteration += 1
                     break
 
-            self.report(f"Iteration {self.ctx.iteration}: {targets}")
+            self.report_progress()
             self.ctx.iteration += 1
 
         if best_position is None or best_value is None:
