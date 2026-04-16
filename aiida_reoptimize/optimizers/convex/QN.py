@@ -76,13 +76,6 @@ class BFGSOptimizer(_GDBase):
 
     def update_parameters(self, gradient: np.ndarray):
         """Update parameters using BFGS direction and step size."""
-
-        self.record_history(
-            parameters=self.ctx.parameters,
-            gradient=gradient,
-            value=self.ctx.results[0],
-        )
-
         exit_code = self.handle_worse_objective(
             rate_key="alpha",
             on_jump=self._reset_after_jump,
@@ -91,13 +84,12 @@ class BFGSOptimizer(_GDBase):
             return exit_code
 
         if self.ctx.iteration == 1:
-            # First iteration, no previous gradient/parameters
             direction = -np.dot(self.ctx.inv_hessian, gradient)
         else:
             s = self.ctx.parameters - self.ctx.parameters_prev
             y = gradient - self.ctx.gradient_prev
             ys = np.dot(y, s)
-            if ys > self.ctx.epsilon:  # Avoid division by zero
+            if ys > self.ctx.epsilon:
                 I = np.eye(len(self.ctx.parameters))  # noqa: E741
                 rho = 1.0 / ys
                 V = I - rho * np.outer(s, y)
@@ -108,11 +100,18 @@ class BFGSOptimizer(_GDBase):
         if hasattr(step_size, "status") and step_size.status != 0:
             return step_size
 
-        self.report(f"Current step size is {step_size}")
         self.ctx.parameters_prev = self.ctx.parameters.copy()
         self.ctx.gradient_prev = gradient.copy()
         step = step_size * direction
         step = self.clamp_step(step)
+
+        self.record_history(
+            parameters=self.ctx.parameters,
+            gradient=gradient,
+            value=self.ctx.results[0],
+            step_rate=step_size,
+            step=step,
+        )
 
         self.report_progress()
         self.ctx.parameters = self.ctx.parameters + step

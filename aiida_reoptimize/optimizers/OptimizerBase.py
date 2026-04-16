@@ -16,9 +16,7 @@ class _OptimizerBase(WorkChain):
         assert cls.extractor is not None, "extractor must be set"
 
         super().define(spec)
-        spec.input(
-            "parameters", valid_type=Dict, help="Optimization parameters."
-        )
+        spec.input("parameters", valid_type=Dict, help="Optimization parameters.")
         spec.input(
             "itmax",
             valid_type=Int,
@@ -31,7 +29,7 @@ class _OptimizerBase(WorkChain):
             default=lambda: Bool(True),
             help="Whether to return the best result node identifier.",
         )
-        
+
         spec.input(
             "structure",
             valid_type=StructureData,
@@ -69,13 +67,29 @@ class _OptimizerBase(WorkChain):
         )
 
     def initialize(self):
-        raise NotImplementedError("Subclasses must implement initialize()")
+        self.ctx.history = []
+
+    def record_history(self, iteration, value, result_node_pk=None):
+        entry = {
+            "iteration": iteration,
+            "value": value,
+            "result_node_pk": result_node_pk,
+        }
+        self.ctx.history.append(entry)
+        return entry
+
+    def report_progress(self):
+        if not self.ctx.history:
+            return
+        entry = self.ctx.history[-1]
+        parts = [f"Iteration {entry['iteration']}", f"value={entry['value']:.6e}"]
+        if entry.get("result_node_pk") is not None:
+            parts.append(f"pk={entry['result_node_pk']}")
+        self.report(" | ".join(parts))
 
     def optimization_process(self):
         """Main optimization loop."""
-        raise NotImplementedError(
-            "Subclasses must implement optimization_process()"
-        )
+        raise NotImplementedError("Subclasses must implement optimization_process()")
 
     def finalize(self):
         """Finalize the optimization process."""
@@ -86,9 +100,7 @@ class _OptimizerBase(WorkChain):
         self.out("final_value", Float(self.ctx.results[0]).store())
 
         if self.inputs.get_best.value:
-            self.out(
-                "result_node_pk", Int(self.ctx.best_result_node_pk).store()
-            )
+            self.out("result_node_pk", Int(self.ctx.best_result_node_pk).store())
 
     def run_evaluator(self, targets, **kwargs):
         """Run the evaluator workchain with or without structure input."""
