@@ -28,6 +28,7 @@ class _PyMOO_Base(_OptimizerBase):
             help="Optimization parameters including bounds, optional tol, and algorithm settings.",
         )
         spec.input("itmax", valid_type=Int, help="Maximum number of iterations.")
+        spec.input("itmin", valid_type=Int, default=10, help="Maximum number of iterations.")
         spec.exit_code(
             401,
             "ERROR_NO_VALID_SOLUTION",
@@ -48,6 +49,7 @@ class _PyMOO_Base(_OptimizerBase):
 
         self.ctx.iteration = 0
         self.ctx.max_iterations = self.inputs.itmax.value
+        self.ctx.min_iterations = self.inputs.itmin.value
         self.ctx.dimensions = normalized["dimensions"]
         self.ctx.bounds = normalized["bounds"]
         algorithm_settings = dict(parameters_dict.get("algorithm_settings", {}))
@@ -165,8 +167,7 @@ class _PyMOO_Base(_OptimizerBase):
 
             if self.ctx.tol is not None and len(recent_best_values) == 3:
                 spread = max(recent_best_values) - min(recent_best_values)
-                # add zero to avoid stuck
-                if 0 < spread < self.ctx.tol:
+                if spread < self.ctx.tol and self.ctx.iteration > self.ctx.min_iterations:
                     self.ctx.terminated_by_tol = True
                     self.report(
                         f"Stopping early: spread of last 3 best values ({spread:.6e}) is below tol={self.ctx.tol:.6e}."
