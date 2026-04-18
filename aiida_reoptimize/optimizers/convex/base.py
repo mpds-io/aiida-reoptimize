@@ -26,7 +26,11 @@ class _GDBase(_OptimizerBase):
             message="Optimization failed to find a valid solution.",
         )
 
-        spec.exit_code(402, "ERROR_STUCK_FOR_TOO_LONG", message="The result is a negative number.")
+        spec.exit_code(
+            402,
+            "ERROR_STUCK_FOR_TOO_LONG",
+            message="Optimizer stuck: step rate reached minimum or too many consecutive worse objectives.",
+        )
 
     def initialize(self):
         """Initialize context variables and optimization parameters."""
@@ -39,10 +43,10 @@ class _GDBase(_OptimizerBase):
 
         self.ctx.calculator_parameters = self.inputs["parameters"].get("calculator_parameters", {})
 
-        self.ctx.tolerance = self.inputs["parameters"].get("algorithm_settings", {}).get("tolerance") or 1e-3
+        self.ctx.tolerance = self.inputs["parameters"].get("algorithm_settings", {}).get("tolerance", 1e-3)
         self.ctx.itmax = self.inputs.itmax.value
-        self.ctx.epsilon = self.inputs["parameters"].get("algorithm_settings", {}).get("epsilon") or 1e-7
-        self.ctx.delta = self.inputs["parameters"].get("algorithm_settings", {}).get("delta") or 1e-6
+        self.ctx.epsilon = self.inputs["parameters"].get("algorithm_settings", {}).get("epsilon", 1e-7)
+        self.ctx.delta = self.inputs["parameters"].get("algorithm_settings", {}).get("delta", 1e-6)
         self.ctx.converged = False
         self.ctx.iteration = 1
 
@@ -159,14 +163,14 @@ class _GDBase(_OptimizerBase):
             value=value if value is not None else self.ctx.results[0],
             result_node_pk=result_node_pk if result_node_pk is not None else self.ctx.raw_results[0]["pk"],
         )
-        entry["parameters"] = parameters.copy() if parameters is not None else self.ctx.parameters.copy()
+        entry["parameters"] = parameters.tolist() if parameters is not None else self.ctx.parameters.tolist()
         entry["gradient_norm"] = (
-            np.linalg.norm(gradient) if gradient is not None else getattr(self.ctx, "gradient", None)
+            float(np.linalg.norm(gradient)) if gradient is not None else getattr(self.ctx, "gradient", None)
         )
         if step_rate is not None:
-            entry["step_rate"] = step_rate
+            entry["step_rate"] = float(step_rate)
         if step is not None:
-            entry["step"] = step.copy() if isinstance(step, np.ndarray) else step
+            entry["step"] = step.tolist() if isinstance(step, np.ndarray) else step
 
     def update_parameters(self, gradient: np.ndarray):
         raise NotImplementedError("Subclasses must implement update_parameters()")
