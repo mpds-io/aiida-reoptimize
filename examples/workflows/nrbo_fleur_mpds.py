@@ -32,7 +32,7 @@ optimizer_parameters = {
     "parameters": Dict(
         {
             "bounds": 0.2,
-            "algorithm_settings": {"pop_size": 5, "tol": 1e-3},
+            "algorithm_settings": {"pop_size": 10, "tol": 1e-3},
             "calculator_parameters": {
                 "codes": {
                     "inpgen": "inpgen@local_machine",
