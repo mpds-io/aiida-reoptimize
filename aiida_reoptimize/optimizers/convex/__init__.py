@@ -1,8 +1,9 @@
-from .GD import AdamOptimizer, RMSpropOptimizer
+from .GD import AdamOptimizer, ConjugateGradientOptimizer, RMSpropOptimizer
 from .QN import BFGSOptimizer
 
 __all__ = [
     "AdamOptimizer",
-    "RMSpropOptimizer",
     "BFGSOptimizer",
+    "ConjugateGradientOptimizer",
+    "RMSpropOptimizer",
 ]
