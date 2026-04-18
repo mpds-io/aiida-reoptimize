@@ -64,7 +64,7 @@ class AlgorithmBuilder:
         "repair": REPAIR,
     }
 
-    allowed_keyords_map = {
+    allowed_keywords_map = {
         "DE": ["pop_size", "n_offsprings", "sampling", "variant"],
         "ES": ["pop_size", "n_offsprings", "rule", "phi", "gamma", "sampling"],
         "GA": ["pop_size", "sampling", "selection", "crossover", "mutation", "eliminate_duplicates", "n_offsprings"],
@@ -99,7 +99,7 @@ class AlgorithmBuilder:
     @staticmethod
     def __process_kwargs(algorithm_name: str, **kwargs):
         # Check if the algorithm name is valid
-        allowed_kwargs = AlgorithmBuilder.allowed_keyords_map.get(algorithm_name, [])  # noqa: E501
+        allowed_kwargs = AlgorithmBuilder.allowed_keywords_map.get(algorithm_name, [])
         if not allowed_kwargs:
             raise ValueError(f"Algorithm {algorithm_name} is not supported.")
 
