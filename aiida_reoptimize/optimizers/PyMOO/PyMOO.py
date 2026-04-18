@@ -28,7 +28,7 @@ class _PyMOO_Base(_OptimizerBase):
             help="Optimization parameters including bounds, optional tol, and algorithm settings.",
         )
         spec.input("itmax", valid_type=Int, help="Maximum number of iterations.")
-        spec.input("itmin", valid_type=Int, default=10, help="Maximum number of iterations.")
+        spec.input("itmin", valid_type=Int, default=lambda: Int(10), help="Maximum number of iterations.")
         spec.exit_code(
             401,
             "ERROR_NO_VALID_SOLUTION",
