@@ -16,13 +16,13 @@ class BFGSOptimizer(_GDBase):
         self.ctx.parameters_prev = None
 
         # Line search parameters
-        self.ctx.alpha = self.inputs["parameters"].get("algorithm_settings", {}).get("alpha") or 1.0
-        self.ctx.beta = self.inputs["parameters"].get("algorithm_settings", {}).get("beta") or 0.5
+        self.ctx.alpha = self.inputs["parameters"].get("algorithm_settings", {}).get("alpha", 1.0)
+        self.ctx.beta = self.inputs["parameters"].get("algorithm_settings", {}).get("beta", 0.5)
 
-        self.ctx.sigma = self.inputs["parameters"].get("algorithm_settings", {}).get("sigma") or 1e-4
+        self.ctx.sigma = self.inputs["parameters"].get("algorithm_settings", {}).get("sigma", 1e-4)
 
         self.ctx.linesearch_max_iter = (
-            self.inputs["parameters"].get("algorithm_settings", {}).get("linesearch_max_iter") or 20
+            self.inputs["parameters"].get("algorithm_settings", {}).get("linesearch_max_iter", 20)
         )
 
     def _reset_after_jump(self):

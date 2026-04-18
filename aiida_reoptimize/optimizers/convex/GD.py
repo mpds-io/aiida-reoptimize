@@ -12,8 +12,8 @@ class RMSpropOptimizer(_GDBase):
         super().initialize()
         self.initialize_step_control()
         self.ctx.accumulated_grad_sq = np.zeros_like(self.ctx.parameters)
-        self.ctx.learning_rate = self.inputs["parameters"].get("algorithm_settings", {}).get("learning_rate") or 1e-3
-        self.ctx.rho = self.inputs["parameters"].get("algorithm_settings", {}).get("rho") or 0.9
+        self.ctx.learning_rate = self.inputs["parameters"].get("algorithm_settings", {}).get("learning_rate", 1e-3)
+        self.ctx.rho = self.inputs["parameters"].get("algorithm_settings", {}).get("rho", 0.9)
 
     def _reset_after_jump(self):
         """Reset RMSprop accumulators after a random jump."""
@@ -122,14 +122,12 @@ class ConjugateGradientOptimizer(_GDBase):
         self.ctx.prev_value = None
         self.ctx.stuck_counter = 0
 
-        self.ctx.learning_rate = self.inputs["parameters"].get("algorithm_settings", {}).get("learning_rate") or 1e-2
-        self.ctx.lr_min = self.inputs["parameters"].get("algorithm_settings", {}).get("lr_min") or 1e-8
-        self.ctx.lr_max = self.inputs["parameters"].get("algorithm_settings", {}).get("lr_max") or 1.0
-        self.ctx.lr_increase = self.inputs["parameters"].get("algorithm_settings", {}).get("lr_increase") or 1.1
-        self.ctx.lr_decrease = self.inputs["parameters"].get("algorithm_settings", {}).get("lr_decrease") or 0.5
-        self.ctx.restart_interval = (
-            self.inputs["parameters"].get("algorithm_settings", {}).get("restart_interval") or 10
-        )
+        self.ctx.learning_rate = self.inputs["parameters"].get("algorithm_settings", {}).get("learning_rate", 1e-2)
+        self.ctx.lr_min = self.inputs["parameters"].get("algorithm_settings", {}).get("lr_min", 1e-8)
+        self.ctx.lr_max = self.inputs["parameters"].get("algorithm_settings", {}).get("lr_max", 1.0)
+        self.ctx.lr_increase = self.inputs["parameters"].get("algorithm_settings", {}).get("lr_increase", 1.1)
+        self.ctx.lr_decrease = self.inputs["parameters"].get("algorithm_settings", {}).get("lr_decrease", 0.5)
+        self.ctx.restart_interval = self.inputs["parameters"].get("algorithm_settings", {}).get("restart_interval", 10)
 
         self.ctx.allow_jumps = self.inputs["parameters"].get("algorithm_settings", {}).get("allowing_jumps", True)
         self.ctx.allowed_stuck = self.inputs["parameters"].get("algorithm_settings", {}).get("allowed_stuck", 3)
