@@ -1,4 +1,4 @@
-from typing import Type
+from typing import Callable, Type
 
 from aiida.engine import WorkChain, run
 from aiida.orm import Bool, Dict, Float, Int, List, StructureData
@@ -8,7 +8,7 @@ class _OptimizerBase(WorkChain):
     """Base class for optimization algorithms."""
 
     evaluator_workchain: Type[WorkChain]
-    extractor: Type[callable]
+    extractor: Callable
 
     @classmethod
     def define(cls, spec):
@@ -92,15 +92,8 @@ class _OptimizerBase(WorkChain):
         raise NotImplementedError("Subclasses must implement optimization_process()")
 
     def finalize(self):
-        """Finalize the optimization process."""
-        self.out(
-            "optimized_parameters",
-            List(list=self.ctx.best_parameters.tolist()).store(),
-        )
-        self.out("final_value", Float(self.ctx.results[0]).store())
-
-        if self.inputs.get_best.value:
-            self.out("result_node_pk", Int(self.ctx.best_result_node_pk).store())
+        """Finalize the optimization process. Subclasses must override this method."""
+        raise NotImplementedError("Subclasses must implement finalize()")
 
     def run_evaluator(self, targets, **kwargs):
         """Run the evaluator workchain with or without structure input."""
