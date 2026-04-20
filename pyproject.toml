@@ -69,6 +69,11 @@ Source = "https://github.com/mpds-io/aiida-reoptimize"
 dev = [
     "ruff>=0.6.9,<0.7",
 ]
+docs = [
+    "sphinx>=7.0,<8",
+    "sphinx-rtd-theme>=2.0",
+    "sphinx-autodoc-typehints>=1.0",
+]
 
 [tool.setuptools.packages.find]
 include = ["aiida_reoptimize*"]
