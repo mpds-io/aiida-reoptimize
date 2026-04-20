@@ -27,12 +27,12 @@ sgs = int(sgs)
 atoms = get_geometry_MPDS(({"formulae": formula, "sgs": sgs}))
 
 optimizer_parameters = {
-    "itmax": Int(100),
+    "itmax": Int(200),
     "structure": StructureData(ase=atoms),
     "parameters": Dict(
         {
             "bounds": 0.15,
-            "algorithm_settings": {"pop_size": 10, "tol": 1e-3},
+            "algorithm_settings": {"pop_size": 10, "tol": 1e-6},
             "calculator_parameters": {
                 "codes": {
                     "inpgen": "inpgen@local_machine",
