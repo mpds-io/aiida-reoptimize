@@ -16,14 +16,25 @@ from aiida_reoptimize.structure.dynamic_structure import StructureCalculator
 
 
 class BuilderFactory(Protocol):
-    """Protocol for helpers returning ready-to-submit builders."""
+    """Protocol for helpers that return ready-to-submit process builders."""
 
     def get_builder(self, target: Any):
-        """Build a calculator or workchain builder for a target."""
+        """Return a calculator or workchain builder for the given target.
+
+        Args:
+            target: Parameter vector or target description.
+
+        Returns:
+            A process builder ready for submission.
+        """
 
 
 class _EvalBaseWorkChain(WorkChain):
-    """Common result-collection logic for batched evaluator workchains."""
+    """Base class for evaluator WorkChains that submit batches of targets and collect results.
+
+    Defines the ``targets`` input, the ``evaluate`` / ``result`` outline, and the
+    ``evaluation_results`` output.
+    """
 
     @classmethod
     def define(cls, spec):
@@ -80,7 +91,12 @@ class _EvalBaseWorkChain(WorkChain):
 
 
 class EvalWorkChainProblem(_EvalBaseWorkChain):
-    """Evaluate plain parameter targets with a dedicated problem workchain."""
+    """Evaluator that submits a dedicated problem workchain for each target.
+
+    The ``problem_workchain`` class attribute must be set to a WorkChain that
+    accepts a single ``x`` input (a scalar or list) and returns the objective
+    function value.
+    """
 
     # Expect to receive a workchain that accepts a single ``x`` input and
     # returns the objective function value.
@@ -92,7 +108,11 @@ class EvalWorkChainProblem(_EvalBaseWorkChain):
         super().define(spec)
 
     def evaluate(self):
-        """Submit the problem workchain once for each target value."""
+        """Submit the problem workchain once for each target value.
+
+        Returns:
+            AiiDA ``ToContext`` mapping that collects submitted process futures.
+        """
 
         target_values = {}
         # This madness appears to be needed to get the correct type
@@ -110,7 +130,11 @@ class EvalWorkChainProblem(_EvalBaseWorkChain):
 
 
 class EvalWorkChainStructureProblem(_EvalBaseWorkChain):
-    """Evaluate structure-like targets by obtaining builders from a helper."""
+    """Evaluator that uses a ``BuilderFactory`` to submit structure-based targets.
+
+    The ``problem_builder`` class attribute must be set to an object implementing
+    the ``BuilderFactory`` protocol (e.g. a ``StructureCalculator`` instance).
+    """
 
     # This workchain is designed for generator-like helpers that convert a
     # target description into a ready-to-submit builder.
@@ -122,9 +146,11 @@ class EvalWorkChainStructureProblem(_EvalBaseWorkChain):
         super().define(spec)
 
     def evaluate(self):
+        """For each target, obtain a builder from the factory and submit it.
+
+        Returns:
+            AiiDA ``ToContext`` mapping that collects submitted process futures.
         """
-        For each x in targets, use the generator to get a builder and submit it.
-        """  # noqa: E501
         target_values = {}
         targets = self._targets()
         self.report(f"Evaluating given targets: {targets}")
@@ -136,7 +162,12 @@ class EvalWorkChainStructureProblem(_EvalBaseWorkChain):
 
 
 class _StaticEvalStructureBase(WorkChain):
-    """Base class for static structure evaluators registered as AiiDA workchains."""
+    """Base class for static structure evaluators registered as AiiDA workchains.
+
+    Accepts a ``structure``, ``targets``, ``calculator_parameters``, and an
+    optional ``structure_keyword`` input. Subclasses must implement
+    ``generate_structures`` and ``evaluate``.
+    """
 
     calculator_workchain: Type[WorkChain]
 
@@ -203,8 +234,16 @@ class _StaticEvalStructureBase(WorkChain):
         return results
 
     def load_codes(self, code_dict: dict):
-        """
-        Load the calculator workchain code from the provided dictionary.
+        """Load Code nodes from a dictionary of label/PK mappings.
+
+        Args:
+            code_dict: Dictionary mapping parameter names to code labels (str) or PKs (int).
+
+        Returns:
+            Dictionary mapping parameter names to loaded Code/Node objects.
+
+        Raises:
+            ValueError: If a code cannot be loaded.
         """
 
         loaded_codes = {}
@@ -221,8 +260,13 @@ class _StaticEvalStructureBase(WorkChain):
         return loaded_codes
 
     def handle_basis_family(self, calculator_parameters):
-        """
-        Perform an action only if 'basis_family' is present in calculator_parameters.
+        """Pop ``basis_family`` from calculator_parameters and load or create the basis set.
+
+        Args:
+            calculator_parameters: Dictionary of calculator parameters.
+
+        Returns:
+            Updated calculator parameters with ``basis_family`` replaced by the loaded object.
         """
         basis_name = calculator_parameters.pop("basis_family", None)
         if basis_name:
@@ -245,16 +289,16 @@ class _StaticEvalStructureBase(WorkChain):
         return self.handle_basis_family(calculator_parameters)
 
     def generate_structures(self):
-        """
-        Generate structures based on the input structure and targets.
-        This method should be implemented in subclasses to modify the structure.
+        """Generate distorted structures and submit the calculator workchain.
+
+        Must be implemented by subclasses that need static structure evaluation.
         """
         raise NotImplementedError("Subclasses must implement generate_structures")
 
     def evaluate(self):
-        """
-        Evaluate the generated structures using the specified workchain.
-        This method should be implemented in subclasses to perform the evaluation.
+        """Submit each generated structure to the calculator workchain.
+
+        Must be implemented by subclasses to perform the actual evaluation.
         """
         raise NotImplementedError("Subclasses must implement evaluate")
 
@@ -268,18 +312,15 @@ class _StaticEvalStructureBase(WorkChain):
 
 
 class StaticEvalLatticeProblem(_StaticEvalStructureBase):
-    """Generate distorted structures and evaluate them with a static workchain."""
+    """Generate distorted lattice structures and evaluate them with a calculator workchain.
+
+    This workchain accepts a structure as an input argument, enabling the creation
+    of static evaluators that can be imported by the AiiDA daemon and used across
+    different optimization tasks.
+    """
 
     def generate_structures(self):
-        """
-        Generate new structures and builders using StructureCalculator.
-        This workflow is needed in order to create static evaluators based on it,
-        i.e., such evaluators. Unlike EvalWorkChainStructureProblem,
-        which is rigidly tied to a specific structure at creation time,
-        this workflow accepts a structure as an argument, which allows
-        the creation of static evaluators that can be used in different tasks,
-        and can also be imported by the AiiDA daemon.
-        """
+        """Generate new structures using ``StructureCalculator`` and store builders in context."""
 
         self.ctx.builders = []
         targets = self._targets()
@@ -297,9 +338,7 @@ class StaticEvalLatticeProblem(_StaticEvalStructureBase):
             self.ctx.builders.append(builder)
 
     def evaluate(self):
-        """
-        Submit the calculator workchain for each generated structure.
-        """
+        """Submit the calculator workchain for each generated structure builder."""
         target_values = {}
         # ! XXX The evaluate method submits all workchains simultaneously, may it lead to resource contention?
         for idx, builder in enumerate(self.ctx.builders):

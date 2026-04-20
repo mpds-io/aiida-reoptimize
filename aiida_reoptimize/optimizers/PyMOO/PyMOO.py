@@ -14,6 +14,17 @@ from aiida_reoptimize.optimizers.result_utils import ensure_population_has_valid
 
 
 class _PyMOO_Base(_OptimizerBase):
+    """Base class for PyMOO-backed optimization WorkChains.
+
+    Manages the ask-evaluate-tell loop with AiiDA, where each iteration
+    submits a batch of evaluations via the evaluator workchain and feeds
+    the results back to the PyMOO algorithm. Supports early stopping via
+    ``tol`` (spread of best values over 3 iterations).
+
+    Subclasses must set ``evaluator_workchain`` and implement
+    ``define_algorithm``.
+    """
+
     evaluator_workchain: Type[WorkChain]
 
     @classmethod
@@ -209,7 +220,14 @@ class _PyMOO_Base(_OptimizerBase):
 
 
 class PyMOO_Optimizer(_PyMOO_Base):
+    """PyMOO optimizer WorkChain that delegates algorithm construction to ``AlgorithmBuilder``.
+
+    The algorithm name and settings are provided via the ``algorithm_name``
+    and ``parameters.algorithm_settings`` inputs.
+    """
+
     def define_algorithm(self, problem):
+        """Build and set up a PyMOO algorithm from ``self.ctx.algorithm_name``."""
         algorithm = AlgorithmBuilder.build_algorithm(self.ctx.algorithm_name, **self.ctx.algorithm_settings)
         algorithm.setup(problem)
         return algorithm

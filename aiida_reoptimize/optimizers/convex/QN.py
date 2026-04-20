@@ -6,7 +6,11 @@ from .base import _GDBase
 
 
 class BFGSOptimizer(_GDBase):
-    """BFGS optimizer based on numerical gradient evaluation."""
+    """BFGS quasi-Newton optimization WorkChain.
+
+    Uses the BFGS formula to approximate the inverse Hessian and performs
+    backtracking line search with the Armijo (sufficient decrease) condition.
+    """
 
     def initialize(self):
         super().initialize()
@@ -33,11 +37,16 @@ class BFGSOptimizer(_GDBase):
         self.ctx.parameters_prev = None
 
     def _line_search(self, direction):
-        """
-        Performs a backtracking line search to determine an appropriate step
-        size along the given search direction. The method iteratively reduces
-        the step size (alpha) by a factor of beta until the Armijo condition
+        """Backtracking line search with Armijo (sufficient decrease) condition.
+
+        Iteratively reduces the step size by ``beta`` until the Armijo condition
         is satisfied, ensuring sufficient decrease in the objective function.
+
+        Args:
+            direction: Search direction vector.
+
+        Returns:
+            Step size (float), or an exit code if evaluation fails.
         """
         alpha = self.ctx.alpha
         beta = self.ctx.beta

@@ -16,7 +16,14 @@ from ...optimizers.PyMOO.PyMOO import PyMOO_Optimizer
 
 
 def output_path_extractor(path: tuple[str, ...]) -> Callable[[Any], Any]:
-    """Build a node-output extractor that walks a nested key path."""
+    """Build a node-output extractor that walks a nested key path.
+
+    Args:
+        path: Tuple of attribute/key names to traverse (e.g. ``("output_scf_wc_para", "total_energy")``).
+
+    Returns:
+        A callable that, given an AiiDA node's ``outputs``, returns the value at the path.
+    """
 
     def _extract(outputs: Any) -> Any:
         value = outputs
@@ -28,7 +35,11 @@ def output_path_extractor(path: tuple[str, ...]) -> Callable[[Any], Any]:
 
 
 class StaticOptimizerBinding:
-    """Mixin that binds evaluator workchain and extractor for static optimizers."""
+    """Mixin that binds evaluator workchain and extractor for static optimizers.
+
+    Sets ``evaluator_workchain`` and creates a ``BasicExtractor`` from the
+    ``extractor_path`` tuple when a subclass is created.
+    """
 
     evaluator_workchain = None
     extractor_path: tuple[str, ...] = ()
@@ -41,7 +52,11 @@ class StaticOptimizerBinding:
 
 
 class FixedPyMOOAlgorithmMixin:
-    """Mixin that pins a static optimizer to a single PyMOO algorithm."""
+    """Mixin that pins a static optimizer WorkChain to a single PyMOO algorithm.
+
+    Subclasses must set the ``fixed_algorithm_name`` class attribute to the
+    desired algorithm string (e.g. ``"G3PCX"`` or ``"NRBO"``).
+    """
 
     fixed_algorithm_name = ""
 
