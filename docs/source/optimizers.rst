@@ -179,7 +179,7 @@ Bounds
 
 ``bounds`` can be:
 
-- A **scalar multiplier** ``b``: each parameter ``p`` gets bounds ``(-b*p, b*p)``
+- A **scalar multiplier** ``b``: each parameter ``p`` gets bounds ``((1-b)*p, (1+b)*p)``
 - A **list of [low, high] pairs**: explicit bounds for each variable
 
 The number of optimized variables is inferred automatically from the Bravais
