@@ -179,7 +179,7 @@ cython_debug/
 # opencode
 .opencode/
 node_modules
-openspec/
+# openspec/
 opencode.json
 package-lock.json
 package.json
