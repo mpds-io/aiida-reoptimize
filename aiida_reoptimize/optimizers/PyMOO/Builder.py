@@ -30,6 +30,13 @@ from pymoo.operators.selection.tournament import TournamentSelection
 
 
 class AlgorithmBuilder:
+    """Factory that maps algorithm names and operator names to PyMOO classes.
+
+    Supported algorithm names: ``DE``, ``ES``, ``GA``, ``G3PCX``, ``PSO``, ``NRBO``.
+    Operator names for sampling, selection, crossover, and mutation are also
+    mapped to their PyMOO implementations.
+    """
+
     SAMPLING = {
         "FRS": FloatRandomSampling,
         "LHS": LHS,
@@ -130,12 +137,17 @@ class AlgorithmBuilder:
 
     @staticmethod
     def build_algorithm(algorithm_name: str, **kwargs):
-        """
-        Factory method to create an algorithm class based on the name.
+        """Create and return a configured PyMOO algorithm instance.
 
         Args:
-            algorithm_name (str): Name of the algorithm.
-            **kwargs: Additional arguments for the algorithm.
+            algorithm_name: One of ``DE``, ``ES``, ``GA``, ``G3PCX``, ``PSO``, ``NRBO``.
+            **kwargs: Algorithm-specific keyword arguments (pop_size, sampling, etc.).
+
+        Returns:
+            A configured PyMOO Algorithm object with ``NoTermination`` set.
+
+        Raises:
+            ValueError: If the algorithm name or a keyword argument is not supported.
         """
 
         if algorithm_name not in AlgorithmBuilder.ALGORITHMS:

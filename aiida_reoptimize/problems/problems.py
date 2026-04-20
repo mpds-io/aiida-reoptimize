@@ -6,6 +6,12 @@ __all__ = ["Ackley", "Rastring", "Sphere"]
 
 
 class _basicProblem(WorkChain):
+    """Base WorkChain for benchmark optimization problems.
+
+    Defines a single ``x`` input (List) and a ``value`` output (Float).
+    Subclasses must implement ``run_calc`` to compute the objective value.
+    """
+
     @classmethod
     def define(cls, spec):
         super().define(spec)
@@ -22,10 +28,13 @@ class _basicProblem(WorkChain):
 
 
 class Ackley(_basicProblem):
+    """Ackley function benchmark problem.
+
+    A widely-used multimodal test function with many local minima.
+    Global minimum at ``x = 0`` with value ``0``.
+
+    See: https://en.wikipedia.org/wiki/Ackley_function
     """
-    Implementation of Ackley function for optimization problems. Global minimum at (0) with value 0.
-    ref https://en.wikipedia.org/wiki/Ackley_function
-    """  # noqa: E501
 
     def run_calc(self):
         x = np.array(self.inputs.x.get_list())
@@ -36,16 +45,17 @@ class Ackley(_basicProblem):
         c = 2 * np.pi
         sum1 = np.sum(x**2)
         sum2 = np.sum(np.cos(c * x))
-        self.ctx.result = (
-            -a * np.exp(-b * np.sqrt(sum1 / n)) - np.exp(sum2 / n) + a + np.e
-        )
+        self.ctx.result = -a * np.exp(-b * np.sqrt(sum1 / n)) - np.exp(sum2 / n) + a + np.e
 
 
 class Rastring(_basicProblem):
+    """Rastrigin function benchmark problem.
+
+    A non-convex function with many local minima used as a performance test
+    for optimization algorithms. Global minimum at ``x = 0`` with value ``0``.
+
+    See: https://en.wikipedia.org/wiki/Rastrigin_function
     """
-    Implementation of Rastrigin function for optimization problems. Global minimum at (0) with value 0.
-    ref https://en.wikipedia.org/wiki/Rastrigin_function
-    """  # noqa: E501
 
     def run_calc(self):
         x = np.array(self.inputs.x.get_list())
@@ -55,7 +65,10 @@ class Rastring(_basicProblem):
 
 
 class Sphere(_basicProblem):
-    """Implementation of Sphere function for optimization problems. Global minimum at (0) with value 0."""  # noqa: E501
+    """Sphere function benchmark problem.
+
+    The simplest convex test function. Global minimum at ``x = 0`` with value ``0``.
+    """
 
     def run_calc(self):
         x = np.array(self.inputs.x.get_list())

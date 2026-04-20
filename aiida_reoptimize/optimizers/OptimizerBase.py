@@ -5,7 +5,16 @@ from aiida.orm import Bool, Dict, Float, Int, List, StructureData
 
 
 class _OptimizerBase(WorkChain):
-    """Base class for optimization algorithms."""
+    """Base class for all optimization algorithm WorkChains.
+
+    Defines common inputs (``parameters``, ``itmax``, ``get_best``, ``structure``),
+    common outputs (``optimized_parameters``, ``final_value``, ``history``,
+    ``result_node_pk``), and the ``initialize`` / ``optimization_process`` /
+    ``finalize`` outline.
+
+    Subclasses must set the ``evaluator_workchain`` and ``extractor`` class
+    attributes and implement ``optimization_process`` and ``finalize``.
+    """
 
     evaluator_workchain: Type[WorkChain]
     extractor: Callable
@@ -96,7 +105,16 @@ class _OptimizerBase(WorkChain):
         raise NotImplementedError("Subclasses must implement finalize()")
 
     def run_evaluator(self, targets, **kwargs):
-        """Run the evaluator workchain with or without structure input."""
+        """Run the evaluator workchain with the given targets.
+
+        Args:
+            targets: AiiDA ``List`` of parameter vectors to evaluate.
+            **kwargs: Additional keyword arguments passed to the evaluator
+                (e.g. ``calculator_parameters``).
+
+        Returns:
+            Dictionary of evaluator outputs including ``evaluation_results``.
+        """
         if self.inputs.get("structure"):
             return run(
                 self.evaluator_workchain,
@@ -108,5 +126,9 @@ class _OptimizerBase(WorkChain):
             return run(self.evaluator_workchain, targets=targets)
 
     def check_itmax(self):
-        """Check if the optimization should continue."""
+        """Check if the current iteration is within the maximum limit.
+
+        Returns:
+            True if the optimizer should continue iterating.
+        """
         return self.ctx.iteration <= self.inputs.itmax.value

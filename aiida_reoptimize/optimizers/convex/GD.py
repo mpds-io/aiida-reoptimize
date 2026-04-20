@@ -4,8 +4,10 @@ from .base import _GDBase
 
 
 class RMSpropOptimizer(_GDBase):
-    """
-    RMSprop workchain
+    """RMSprop optimization WorkChain.
+
+    Uses an exponentially decaying moving average of squared gradients to
+    adapt the learning rate per parameter.
     """
 
     def initialize(self):
@@ -54,6 +56,12 @@ class RMSpropOptimizer(_GDBase):
 
 
 class AdamOptimizer(_GDBase):
+    """Adam (Adaptive Moment Estimation) optimization WorkChain.
+
+    Combines momentum (first moment) and RMSprop-style adaptive learning
+    rates (second moment) for robust gradient-based optimization.
+    """
+
     def initialize(self):
         super().initialize()
         self.initialize_step_control()
@@ -111,8 +119,10 @@ class AdamOptimizer(_GDBase):
 
 
 class ConjugateGradientOptimizer(_GDBase):
-    """
-    Conjugate Gradient Descent optimizer (Polak–Ribiere version) with dynamic learning rate.
+    """Conjugate Gradient Descent optimizer (Polak-Ribiere version) with dynamic learning rate.
+
+    Uses Polak-Ribiere beta coefficient with periodic restarts and adaptive
+    learning rate (increase on improvement, decrease on stagnation).
     """
 
     def initialize(self):

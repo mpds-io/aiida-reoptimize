@@ -8,7 +8,12 @@ from ..result_utils import ensure_population_has_valid_results
 
 
 class _GDBase(_OptimizerBase):
-    """Basis for SDG based optimization algorithm"""
+    """Base class for gradient-descent-style optimization algorithms.
+
+    Implements numerical gradient evaluation via finite differences, step
+    clamping, rollback on worse objective, learning rate decay, and random
+    jump escapes. Subclasses must implement ``update_parameters``.
+    """
 
     @classmethod
     def define(cls, spec):
