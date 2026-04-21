@@ -1,6 +1,6 @@
 # Atomic structure optimization by AiiDA and PyMOO
 
-`aiida-reoptimize` is a framework for running advanced optimization workflows in computational materials science and chemistry, leveraging the AiiDA workflows and the [PyMOO](https://pymoo.org) external optimization library. Both lattice and atomic positions optimizations are supported. Two simulation engines were tested: [CRYSTAL](https://www.crystal.unito.it) and [FLEUR](https://www.flapw.de). See [documentation](https://mpds-io.github.io/aiida-reoptimize/index.html)
+`aiida-reoptimize` is a framework for running advanced optimization workflows in computational materials science and chemistry, leveraging the AiiDA workflows and the [PyMOO](https://pymoo.org) external optimization library. Both lattice and atomic positions optimizations are supported. Two simulation engines were tested: [CRYSTAL](https://www.crystal.unito.it) and [FLEUR](https://www.flapw.de). See [documentation](https://mpds-io.github.io/aiida-reoptimize/index.html).
 
 
 ## Features
