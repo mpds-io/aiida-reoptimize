@@ -1,6 +1,6 @@
 # Atomic structure optimization by AiiDA and PyMOO
 
-`aiida-reoptimize` is a framework for running advanced optimization workflows in computational materials science and chemistry, leveraging the AiiDA workflows and the [PyMOO](https://pymoo.org) external optimization library. Both lattice and atomic positions optimizations are supported. Two simulation engines were tested: [CRYSTAL](https://www.crystal.unito.it) and [FLEUR](https://www.flapw.de).
+`aiida-reoptimize` is a framework for running advanced optimization workflows in computational materials science and chemistry, leveraging the AiiDA workflows and the [PyMOO](https://pymoo.org) external optimization library. Both lattice and atomic positions optimizations are supported. Two simulation engines were tested: [CRYSTAL](https://www.crystal.unito.it) and [FLEUR](https://www.flapw.de). See [documentation](https://mpds-io.github.io/aiida-reoptimize/index.html)
 
 
 ## Features
@@ -162,7 +162,7 @@ The `PyMOO_Optimizer` class requires the following parameters as input:
 - `algorithm_settings` (`Dict`): Algorithm-specific settings (see below)
 - `tol` (`float`, optional): early-stop threshold. Optimization stops successfully when the spread of the best objective values across 3 consecutive iterations is smaller than `tol`.
 - `bounds` (`float | List[List[float, float]]`):
-  - scalar multiplier `b`: bounds for each parameter `p` become `(-b*p, b*p)`
+  - scalar multiplier `b`: bounds for each parameter `p` become `((1-b)*p, (1+b)*p)`
   - explicit list of `[min, max]` pairs for each variable
 
 The number of optimized variables is inferred automatically from structure parameters (Bravais lattice), with fallback to `initial_parameters` or list-form `bounds`.
