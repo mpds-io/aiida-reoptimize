@@ -86,9 +86,6 @@ def convert_xml_to_FleurInpData(xml_input: str):
         FleurinpData: The FleurinpData object created from the XML input.
     """
 
-    # !!! IF YOU WORK WITH MAGMOMS IT IS HIGHLY IMPORTANT TO MAKE SURE THAT
-    # !!! YOU ARE USING THIS ase-fleur LIBRARY git+https://github.com/blokhin/ase-fleur
-
     with tempfile.TemporaryDirectory() as tmp_dir:
         xml_path = os.path.join(tmp_dir, "inp.xml")
         with open(xml_path, "w") as f:
