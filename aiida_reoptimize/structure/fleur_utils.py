@@ -48,7 +48,7 @@ class Fleur_setup:
 
             opts = ["-f", "fleur.inp", "-inc", "+all", "-noco"]
 
-            inpgen_path = os.environ.get("FLEUR_INPGEN_PATH")
+            inpgen_path = os.environ.get("FLEUR_INPGEN_PATH", "/data/inpgen")
             if not inpgen_path or not os.path.exists(inpgen_path):
                 raise FileNotFoundError("FLEUR_INPGEN_PATH is not set or does not exist")
 
