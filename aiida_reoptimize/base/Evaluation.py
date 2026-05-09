@@ -15,6 +15,7 @@ from aiida.plugins import DataFactory
 from aiida_reoptimize.structure.dynamic_structure import (
     ParameterVectorMismatchError,
     StructureCalculator,
+    StructureStandardizationError,
 )
 
 
@@ -222,6 +223,11 @@ class _StaticEvalStructureBase(WorkChain):
             "ERROR_INVALID_PARAMETER_VECTOR",
             message="Target parameter vector is incompatible with the structure Bravais lattice.",
         )
+        spec.exit_code(
+            411,
+            "ERROR_STRUCTURE_STANDARDIZATION_FAILED",
+            message="Generated structure could not be standardized with spglib.",
+        )
 
     def _targets(self) -> list[Any]:
         """Return structure perturbation targets as a Python list."""
@@ -348,6 +354,9 @@ class StaticEvalLatticeProblem(_StaticEvalStructureBase):
             except ParameterVectorMismatchError as exc:
                 self.report(f"Invalid lattice parameter vector at target {index}: {exc}")
                 return self.exit_codes.ERROR_INVALID_PARAMETER_VECTOR
+            except StructureStandardizationError as exc:
+                self.report(f"Could not standardize generated structure at target {index}: {exc}")
+                return self.exit_codes.ERROR_STRUCTURE_STANDARDIZATION_FAILED
             self.ctx.builders.append(builder)
 
     def evaluate(self):
