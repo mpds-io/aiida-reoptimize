@@ -11,6 +11,9 @@ def _as_float_array(values: Sequence[Any] | None, *, field_name: str) -> np.ndar
     if values is None:
         return None
 
+    if hasattr(values, "get_list"):
+        values = values.get_list()
+
     if isinstance(values, (str, bytes)):
         raise ValueError(f"'{field_name}' must be a sequence of numbers.")
 
@@ -27,7 +30,7 @@ def _as_float_array(values: Sequence[Any] | None, *, field_name: str) -> np.ndar
     return array
 
 
-def _extract_initial_parameters_from_structure(structure: Any) -> np.ndarray:
+def _extract_lattice_parameters_from_structure(structure: Any) -> tuple[np.ndarray, tuple[str, ...], str]:
     ase_structure = structure.get_ase() if hasattr(structure, "get_ase") else structure
     lattice = ase_structure.cell.get_bravais_lattice()
 
@@ -35,9 +38,31 @@ def _extract_initial_parameters_from_structure(structure: Any) -> np.ndarray:
         values = lattice.vars()
         if isinstance(values, Mapping) and values:
             parameter_names = tuple(getattr(lattice, "parameters", tuple(values)))
-            return np.array([float(values[name]) for name in parameter_names], dtype=np.float64)
+            lattice_name = getattr(lattice, "name", lattice.__class__.__name__)
+            return (
+                np.array([float(values[name]) for name in parameter_names], dtype=np.float64),
+                parameter_names,
+                lattice_name,
+            )
 
     raise ValueError("Could not infer structural parameters from structure bravais lattice.")
+
+
+def _extract_initial_parameters_from_structure(structure: Any) -> np.ndarray:
+    parameters, _, _ = _extract_lattice_parameters_from_structure(structure)
+    return parameters
+
+
+def _validate_parameters_match_structure(parameters: np.ndarray, structure: Any, *, field_name: str) -> None:
+    structure_parameters, parameter_names, lattice_name = _extract_lattice_parameters_from_structure(structure)
+    if parameters.size == structure_parameters.size:
+        return
+
+    expected = ", ".join(parameter_names)
+    raise ValueError(
+        f"Length mismatch: '{field_name}' contains {parameters.size} entries but "
+        f"{lattice_name} expects {structure_parameters.size} parameters ({expected})."
+    )
 
 
 def _normalize_bounds_from_scalar(scale: float, parameters: np.ndarray) -> np.ndarray:
@@ -97,6 +122,13 @@ def prepare_optimization_parameters(  # noqa: C901
         raise ValueError("'dimensions' must not be passed explicitly. It is inferred automatically.")
 
     initial_parameters = _as_float_array(parameters.get("initial_parameters"), field_name="initial_parameters")
+
+    if initial_parameters is not None and structure is not None:
+        _validate_parameters_match_structure(
+            initial_parameters,
+            structure,
+            field_name="initial_parameters",
+        )
 
     if initial_parameters is None and structure is not None:
         initial_parameters = _extract_initial_parameters_from_structure(structure)
