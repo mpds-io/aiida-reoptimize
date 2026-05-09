@@ -3,10 +3,17 @@ from typing import Type
 import ase
 from aiida.engine import WorkChain
 from aiida.orm import StructureData
+from ase.lattice import UnconventionalLattice
+
+from aiida_reoptimize.structure.magmoms_utils import ase_to_std
 
 
 class ParameterVectorMismatchError(ValueError):
     """Raised when a target vector does not match the lattice parameterization."""
+
+
+class StructureStandardizationError(ValueError):
+    """Raised when a generated structure cannot be standardized with spglib."""
 
 
 class DynamicStructure:
@@ -34,6 +41,37 @@ class DynamicStructure:
         values = self.__structure_lattice.vars()
         return [float(values[name]) for name in self.__parameter_names]
 
+    def _lattice_name(self) -> str:
+        return getattr(
+            self.__structure_lattice,
+            "name",
+            self.__structure_lattice.__class__.__name__,
+        )
+
+    def _parameter_values(self, x) -> dict[str, float]:
+        parameters = list(x)
+        if len(parameters) != len(self.__parameter_names):
+            expected = ", ".join(self.__parameter_names)
+            raise ParameterVectorMismatchError(
+                f"Parameter vector length mismatch for {self._lattice_name()}: "
+                f"expected {len(self.__parameter_names)} values ({expected}), "
+                f"got {len(parameters)}."
+            )
+        return dict(zip(self.__parameter_names, parameters, strict=True))
+
+    def _cell_from_parameters(self, parameter_values: dict[str, float]):
+        try:
+            return self.__structure_lattice.__class__(**parameter_values).tocell()
+        except UnconventionalLattice:
+            return self.__structure_lattice._cell(**parameter_values)
+
+    @staticmethod
+    def _standardize_structure(structure):
+        try:
+            return ase_to_std(structure)
+        except Exception as exc:
+            raise StructureStandardizationError("Failed to standardize generated structure with spglib.") from exc
+
     def __call__(self, x):
         """Create a new ASE Atoms object with cell parameters given by ``x``.
 
@@ -43,24 +81,11 @@ class DynamicStructure:
         Returns:
             A new ASE Atoms object with the updated cell and scaled positions.
         """
-        parameters = list(x)
-        if len(parameters) != len(self.__parameter_names):
-            lattice_name = getattr(
-                self.__structure_lattice,
-                "name",
-                self.__structure_lattice.__class__.__name__,
-            )
-            expected = ", ".join(self.__parameter_names)
-            raise ParameterVectorMismatchError(
-                f"Parameter vector length mismatch for {lattice_name}: "
-                f"expected {len(self.__parameter_names)} values ({expected}), "
-                f"got {len(parameters)}."
-            )
-
-        new_cell = self.__structure_lattice.__class__(**dict(zip(self.__parameter_names, parameters, strict=True)))
+        parameter_values = self._parameter_values(x)
+        new_cell = self._cell_from_parameters(parameter_values)
         new_structure = self.__structure.copy()
-        new_structure.set_cell(new_cell.tocell(), scale_atoms=True)
-        return new_structure
+        new_structure.set_cell(new_cell, scale_atoms=True)
+        return self._standardize_structure(new_structure)
 
 
 class StructureCalculator:
