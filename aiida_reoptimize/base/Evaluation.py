@@ -12,7 +12,10 @@ from aiida.engine import ToContext, WorkChain
 from aiida.orm import Dict, List, StructureData, load_code, load_node
 from aiida.plugins import DataFactory
 
-from aiida_reoptimize.structure.dynamic_structure import StructureCalculator
+from aiida_reoptimize.structure.dynamic_structure import (
+    ParameterVectorMismatchError,
+    StructureCalculator,
+)
 
 
 class BuilderFactory(Protocol):
@@ -214,6 +217,12 @@ class _StaticEvalStructureBase(WorkChain):
             help="List of evaluation results for each target",
         )
 
+        spec.exit_code(
+            410,
+            "ERROR_INVALID_PARAMETER_VECTOR",
+            message="Target parameter vector is incompatible with the structure Bravais lattice.",
+        )
+
     def _targets(self) -> list[Any]:
         """Return structure perturbation targets as a Python list."""
 
@@ -333,8 +342,12 @@ class StaticEvalLatticeProblem(_StaticEvalStructureBase):
             structure_keyword=tuple(self.inputs.structure_keyword.get_list()),
         )
 
-        for x in targets:
-            builder = structure_calculator.get_builder(x)
+        for index, x in enumerate(targets):
+            try:
+                builder = structure_calculator.get_builder(x)
+            except ParameterVectorMismatchError as exc:
+                self.report(f"Invalid lattice parameter vector at target {index}: {exc}")
+                return self.exit_codes.ERROR_INVALID_PARAMETER_VECTOR
             self.ctx.builders.append(builder)
 
     def evaluate(self):
