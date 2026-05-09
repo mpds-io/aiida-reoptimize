@@ -5,6 +5,10 @@ from aiida.engine import WorkChain
 from aiida.orm import StructureData
 
 
+class ParameterVectorMismatchError(ValueError):
+    """Raised when a target vector does not match the lattice parameterization."""
+
+
 class DynamicStructure:
     """Generate new structures from a given ASE Atoms object by changing cell parameters.
 
@@ -16,6 +20,19 @@ class DynamicStructure:
     def __init__(self, structure):
         self.__structure = structure
         self.__structure_lattice = structure.cell.get_bravais_lattice()
+        self.__parameter_names = tuple(self.__structure_lattice.parameters)
+
+    @property
+    def parameter_names(self) -> tuple[str, ...]:
+        """Return the ASE Bravais lattice parameter names expected by ``__call__``."""
+
+        return self.__parameter_names
+
+    def initial_parameters(self) -> list[float]:
+        """Return the current lattice parameters in the same order expected by ``__call__``."""
+
+        values = self.__structure_lattice.vars()
+        return [float(values[name]) for name in self.__parameter_names]
 
     def __call__(self, x):
         """Create a new ASE Atoms object with cell parameters given by ``x``.
@@ -26,7 +43,21 @@ class DynamicStructure:
         Returns:
             A new ASE Atoms object with the updated cell and scaled positions.
         """
-        new_cell = self.__structure_lattice.__class__(*x)
+        parameters = list(x)
+        if len(parameters) != len(self.__parameter_names):
+            lattice_name = getattr(
+                self.__structure_lattice,
+                "name",
+                self.__structure_lattice.__class__.__name__,
+            )
+            expected = ", ".join(self.__parameter_names)
+            raise ParameterVectorMismatchError(
+                f"Parameter vector length mismatch for {lattice_name}: "
+                f"expected {len(self.__parameter_names)} values ({expected}), "
+                f"got {len(parameters)}."
+            )
+
+        new_cell = self.__structure_lattice.__class__(**dict(zip(self.__parameter_names, parameters, strict=True)))
         new_structure = self.__structure.copy()
         new_structure.set_cell(new_cell.tocell(), scale_atoms=True)
         return new_structure

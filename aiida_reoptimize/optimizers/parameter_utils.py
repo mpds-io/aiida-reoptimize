@@ -34,7 +34,8 @@ def _extract_initial_parameters_from_structure(structure: Any) -> np.ndarray:
     if hasattr(lattice, "vars"):
         values = lattice.vars()
         if isinstance(values, Mapping) and values:
-            return np.array([float(value) for value in values.values()], dtype=np.float64)
+            parameter_names = tuple(getattr(lattice, "parameters", tuple(values)))
+            return np.array([float(values[name]) for name in parameter_names], dtype=np.float64)
 
     raise ValueError("Could not infer structural parameters from structure bravais lattice.")
 
