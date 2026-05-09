@@ -132,6 +132,8 @@ class _PyMOO_Base(_OptimizerBase):
             if self.ctx.calculator_parameters is not None:
                 run_kwargs["calculator_parameters"] = self.ctx.calculator_parameters
             raw_results = self.run_evaluator(targets, **run_kwargs)
+            if raw_results is None:
+                return self.exit_codes.ERROR_EVALUATOR_FAILED
             results = self.extractor(raw_results["evaluation_results"])
             exit_code = ensure_population_has_valid_results(
                 self,

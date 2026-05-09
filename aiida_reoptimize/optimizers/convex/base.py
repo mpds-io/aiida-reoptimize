@@ -191,6 +191,8 @@ class _GDBase(_OptimizerBase):
         while self.should_continue():
             targets = self.generate_targets()
             raw_results = self.run_evaluator(targets, calculator_parameters=self.ctx.calculator_parameters)
+            if raw_results is None:
+                return self.exit_codes.ERROR_EVALUATOR_FAILED
             self.ctx.raw_results = raw_results["evaluation_results"]
             self.ctx.results = self.extractor(self.ctx.raw_results)
             exit_code = ensure_population_has_valid_results(
