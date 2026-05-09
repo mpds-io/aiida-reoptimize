@@ -65,6 +65,12 @@ def check_magmoms_ase(atoms: Atoms) -> bool:
     return any(any(atom.magmom) if hasattr(atom.magmom, "__iter__") else atom.magmom for atom in atoms)
 
 
+def has_initial_magmoms_ase(atoms: Atoms) -> bool:
+    """Return whether the ASE Atoms object carries an initial magnetic moment array."""
+
+    return "initial_magmoms" in atoms.arrays
+
+
 def numpy_to_python(value: Union[np.ndarray, float]) -> Union[List, float]:
     """
     Converts numpy arrays or scalars to native Python types.
@@ -103,8 +109,8 @@ def convert_ase_to_spg(
     lattice = atoms.get_cell()[:]
     numbers = atoms.get_atomic_numbers()
 
-    # Check for magnetic moment presence
-    if check_magmoms_ase(atoms):
+    # Preserve magnetic moments whenever the ASE array is present, even if all values are zero.
+    if has_initial_magmoms_ase(atoms):
         magmoms = atoms.get_initial_magnetic_moments()
         cell = (lattice, scaled_positions, numbers, magmoms)
     else:
@@ -233,7 +239,7 @@ def ase_to_prim(atoms: Atoms) -> Atoms:
     struct_prim = spg_get_primitive(struct_raw)
 
     # Create atoms object with magnetic moments if present
-    if check_magmoms_ase(atoms):
+    if has_initial_magmoms_ase(atoms):
         new_atoms = Atoms(
             cell=struct_prim[0],
             scaled_positions=struct_prim[1],
@@ -287,7 +293,7 @@ def ase_to_std(atoms: Atoms) -> Atoms:
     struct_prim = spg_get_std(struct_raw)
 
     # Create atoms object with magnetic moments if present
-    if check_magmoms_ase(atoms):
+    if has_initial_magmoms_ase(atoms):
         new_atoms = Atoms(
             cell=struct_prim[0],
             scaled_positions=struct_prim[1],
@@ -332,7 +338,7 @@ def ase_to_struct_prim(atoms: Atoms) -> Tuple[StructureData, Dict[int, Tuple]]:
     # It expects to get primitive cell as input
     ase_prim = ase_to_prim(atoms)
 
-    if check_magmoms_ase(atoms):
+    if has_initial_magmoms_ase(atoms):
         cell_raw = convert_ase_to_spg(atoms)
         # Expects tuple of length 5 and dict
         # (lattice, scaled_positions, numbers, kinds, magmoms), mapper
