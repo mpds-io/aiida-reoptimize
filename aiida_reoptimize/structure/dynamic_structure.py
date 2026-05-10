@@ -2,8 +2,14 @@ from typing import Type
 
 import ase
 from aiida.engine import WorkChain
-from aiida.orm import StructureData
+from aiida.orm import Dict
+from ase.data import chemical_symbols
 from ase.lattice import UnconventionalLattice
+
+from aiida_reoptimize.structure.magmoms_utils import (
+    MagneticMomentPreservationError,
+    ase_to_structure_preserving_cell_and_magmoms,
+)
 
 
 class ParameterVectorMismatchError(ValueError):
@@ -12,6 +18,87 @@ class ParameterVectorMismatchError(ValueError):
 
 class StructureStandardizationError(ValueError):
     """Raised when a generated structure cannot be standardized with spglib."""
+
+
+def _plain_dict(value):
+    if value is None:
+        return {}
+    if hasattr(value, "get_dict"):
+        return value.get_dict()
+    return dict(value)
+
+
+def _atom_block_symbol(block: dict) -> str | None:
+    if "element" in block:
+        return block["element"]
+    if "z" in block:
+        try:
+            return chemical_symbols[int(block["z"])]
+        except (ValueError, TypeError, IndexError):
+            return None
+    return None
+
+
+def _same_atom_id(left, right) -> bool:
+    try:
+        return float(left) == float(right)
+    except (TypeError, ValueError):
+        return left == right
+
+
+def _unique_atom_key(parameters: dict, preferred: str) -> str:
+    if preferred not in parameters:
+        return preferred
+
+    index = 1
+    while f"{preferred}_{index}" in parameters:
+        index += 1
+    return f"{preferred}_{index}"
+
+
+def _atom_blocks(parameters: dict):
+    for key, value in parameters.items():
+        if "atom" in key and isinstance(value, dict):
+            yield key, value
+
+
+def _base_atom_blocks_by_symbol(parameters: dict) -> dict:
+    base_atoms_by_symbol = {}
+    for _, value in _atom_blocks(parameters):
+        symbol = _atom_block_symbol(value)
+        if symbol is not None and symbol not in base_atoms_by_symbol:
+            base_atoms_by_symbol[symbol] = value
+    return base_atoms_by_symbol
+
+
+def _matching_atom_key_by_id(parameters: dict, atom_id) -> str | None:
+    for key, value in _atom_blocks(parameters):
+        if "id" in value and _same_atom_id(value["id"], atom_id):
+            return key
+    return None
+
+
+def _merge_magnetic_calc_parameters(existing, magnetic_updates: dict) -> dict:
+    merged = _plain_dict(existing).copy()
+    base_atoms_by_symbol = _base_atom_blocks_by_symbol(merged)
+
+    if "comp" in magnetic_updates:
+        merged["comp"] = {
+            **merged.get("comp", {}),
+            **magnetic_updates["comp"],
+        }
+
+    for key, atom_block in _atom_blocks(magnetic_updates):
+        symbol = _atom_block_symbol(atom_block)
+        merged_atom = {
+            **base_atoms_by_symbol.get(symbol, {}),
+            **atom_block,
+        }
+
+        existing_key = _matching_atom_key_by_id(merged, merged_atom.get("id")) or _unique_atom_key(merged, key)
+        merged[existing_key] = merged_atom
+
+    return merged
 
 
 class DynamicStructure:
@@ -138,9 +225,23 @@ class StructureCalculator:
             A process builder with the new structure and calculator parameters set.
         """
         new_ase_structure = self.dynamic_structure(x)
-        new_structure = StructureData(ase=new_ase_structure)
+        new_structure, magnetic_calc_parameters, _ = ase_to_structure_preserving_cell_and_magmoms(new_ase_structure)
         builder = self.calculator.get_builder()
-        for key, value in self.parameters.items():
+        parameters = dict(self.parameters)
+        if magnetic_calc_parameters:
+            if not hasattr(builder, "calc_parameters"):
+                raise MagneticMomentPreservationError(
+                    "Generated structure has initial magnetic moments, but the calculator builder "
+                    "does not accept 'calc_parameters'."
+                )
+            parameters["calc_parameters"] = Dict(
+                dict=_merge_magnetic_calc_parameters(
+                    parameters.get("calc_parameters"),
+                    magnetic_calc_parameters,
+                )
+            )
+
+        for key, value in parameters.items():
             setattr(builder, key, value)
         self.set_nested(builder, self.structure_keyword, new_structure)
         return builder
