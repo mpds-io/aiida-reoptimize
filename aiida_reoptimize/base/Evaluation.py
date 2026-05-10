@@ -17,6 +17,7 @@ from aiida_reoptimize.structure.dynamic_structure import (
     StructureCalculator,
     StructureStandardizationError,
 )
+from aiida_reoptimize.structure.magmoms_utils import MagneticMomentPreservationError
 
 
 class BuilderFactory(Protocol):
@@ -228,6 +229,11 @@ class _StaticEvalStructureBase(WorkChain):
             "ERROR_STRUCTURE_STANDARDIZATION_FAILED",
             message="Generated structure could not be standardized with spglib.",
         )
+        spec.exit_code(
+            412,
+            "ERROR_MAGNETIC_MOMENT_PRESERVATION_FAILED",
+            message="Generated structure magnetic moments could not be preserved.",
+        )
 
     def _targets(self) -> list[Any]:
         """Return structure perturbation targets as a Python list."""
@@ -357,6 +363,9 @@ class StaticEvalLatticeProblem(_StaticEvalStructureBase):
             except StructureStandardizationError as exc:
                 self.report(f"Could not standardize generated structure at target {index}: {exc}")
                 return self.exit_codes.ERROR_STRUCTURE_STANDARDIZATION_FAILED
+            except MagneticMomentPreservationError as exc:
+                self.report(f"Could not preserve magnetic moments at target {index}: {exc}")
+                return self.exit_codes.ERROR_MAGNETIC_MOMENT_PRESERVATION_FAILED
             self.ctx.builders.append(builder)
 
     def evaluate(self):
