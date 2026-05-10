@@ -25,7 +25,8 @@ else:
 sgs = int(sgs)
 
 atoms = get_geometry_MPDS(({"formulae": formula, "sgs": sgs}))
-lattice_parameters = [float(value) for value in atoms.cell.get_bravais_lattice().vars().values()]
+lattice = atoms.cell.get_bravais_lattice()
+lattice_parameters = [float(lattice.vars()[name]) for name in lattice.parameters]
 optimizer_parameters = {
     "itmax": Int(100),
     "structure": StructureData(ase=atoms),

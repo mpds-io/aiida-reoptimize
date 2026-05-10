@@ -5,8 +5,6 @@ from aiida.engine import WorkChain
 from aiida.orm import StructureData
 from ase.lattice import UnconventionalLattice
 
-from aiida_reoptimize.structure.magmoms_utils import ase_to_std
-
 
 class ParameterVectorMismatchError(ValueError):
     """Raised when a target vector does not match the lattice parameterization."""
@@ -65,13 +63,6 @@ class DynamicStructure:
         except UnconventionalLattice:
             return self.__structure_lattice._cell(**parameter_values)
 
-    @staticmethod
-    def _standardize_structure(structure):
-        try:
-            return ase_to_std(structure)
-        except Exception as exc:
-            raise StructureStandardizationError("Failed to standardize generated structure with spglib.") from exc
-
     def __call__(self, x):
         """Create a new ASE Atoms object with cell parameters given by ``x``.
 
@@ -85,7 +76,7 @@ class DynamicStructure:
         new_cell = self._cell_from_parameters(parameter_values)
         new_structure = self.__structure.copy()
         new_structure.set_cell(new_cell, scale_atoms=True)
-        return self._standardize_structure(new_structure)
+        return new_structure
 
 
 class StructureCalculator:
