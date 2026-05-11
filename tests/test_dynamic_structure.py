@@ -217,6 +217,28 @@ class TestDynamicStructure(unittest.TestCase):
         with self.assertRaises(MagneticMomentPreservationError):
             structure_calculator.get_builder([2.0, 2.0, 3.0])
 
+    def test_orc_to_tet_symmetry_change_generates_valid_structure(self):
+        dynamic_structure = DynamicStructure(self.atoms_for_lattice(ORC(1.0, 2.0, 3.0)))
+
+        generated = dynamic_structure([2.0, 2.0, 3.0])
+
+        self.assert_cell_allclose(generated, np.diag([2.0, 2.0, 3.0]))
+
+    def test_orc_to_cub_symmetry_change_generates_valid_structure(self):
+        dynamic_structure = DynamicStructure(self.atoms_for_lattice(ORC(1.0, 2.0, 3.0)))
+
+        generated = dynamic_structure([2.0, 2.0, 2.0])
+
+        self.assert_cell_allclose(generated, np.diag([2.0, 2.0, 2.0]))
+
+    def test_mcl_to_orc_symmetry_change_generates_valid_structure(self):
+        lattice = MCL(1.0, 2.0, 3.0, 80.0)
+        dynamic_structure = DynamicStructure(self.atoms_for_lattice(lattice))
+
+        generated = dynamic_structure([1.0, 2.0, 3.0, 90.0])
+
+        self.assert_cell_allclose(generated, lattice._cell(1.0, 2.0, 3.0, 90.0))
+
 
 if __name__ == "__main__":
     unittest.main()

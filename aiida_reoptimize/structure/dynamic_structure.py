@@ -4,7 +4,6 @@ import ase
 from aiida.engine import WorkChain
 from aiida.orm import Dict
 from ase.data import chemical_symbols
-from ase.lattice import UnconventionalLattice
 
 from aiida_reoptimize.structure.magmoms_utils import (
     MagneticMomentPreservationError,
@@ -145,10 +144,7 @@ class DynamicStructure:
         return dict(zip(self.__parameter_names, parameters, strict=True))
 
     def _cell_from_parameters(self, parameter_values: dict[str, float]):
-        try:
-            return self.__structure_lattice.__class__(**parameter_values).tocell()
-        except UnconventionalLattice:
-            return self.__structure_lattice._cell(**parameter_values)
+        return self.__structure_lattice._cell(**parameter_values)
 
     def __call__(self, x):
         """Create a new ASE Atoms object with cell parameters given by ``x``.
