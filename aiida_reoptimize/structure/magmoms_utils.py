@@ -4,12 +4,16 @@ from typing import Any, Dict, List, Tuple, Union
 import numpy as np
 from aiida.orm import StructureData
 from ase import Atoms
-from ase.data import chemical_symbols
+from ase.data import atomic_numbers, chemical_symbols
 from spglib import (
     find_primitive,
     get_magnetic_symmetry_dataset,
     standardize_cell,
 )
+
+
+class MagneticMomentPreservationError(ValueError):
+    """Raised when magnetic moments cannot be preserved without changing the structure cell."""
 
 
 def convert_to_set(data: List[Tuple[Any]]) -> Tuple[set, List[Tuple]]:
@@ -65,6 +69,75 @@ def check_magmoms_ase(atoms: Atoms) -> bool:
     return any(any(atom.magmom) if hasattr(atom.magmom, "__iter__") else atom.magmom for atom in atoms)
 
 
+def has_initial_magmoms_ase(atoms: Atoms) -> bool:
+    """Return whether the ASE Atoms object carries an initial magnetic moment array."""
+
+    return "initial_magmoms" in atoms.arrays
+
+
+def _atom_id(symbol: str, kind_index: int) -> float:
+    """Return the FLEUR inpgen atom id that corresponds to a kind suffix."""
+
+    return float(f"{atomic_numbers[symbol]}.{kind_index}")
+
+
+def ase_to_structure_preserving_cell_and_magmoms(atoms: Atoms) -> tuple[StructureData, dict, dict[str, float]]:
+    """Convert ASE atoms to ``StructureData`` without standardizing the cell.
+
+    ``StructureData(ase=...)`` does not preserve ASE ``initial_magmoms``. For
+    magnetic structures this helper manually creates AiiDA kinds whose numeric
+    suffixes line up with generated FLEUR inpgen ``atom`` namelists.
+    """
+
+    if not has_initial_magmoms_ase(atoms):
+        return StructureData(ase=atoms), {}, {}
+
+    magmoms = np.asarray(atoms.arrays["initial_magmoms"])
+    if magmoms.ndim != 1:
+        raise MagneticMomentPreservationError(
+            "Only scalar collinear initial magnetic moments are supported for cell-preserving conversion."
+        )
+
+    structure = StructureData(
+        cell=atoms.cell.array,
+        pbc=tuple(bool(value) for value in atoms.pbc),
+    )
+    kind_by_symbol_and_moment: dict[tuple[str, float], tuple[str, int]] = {}
+    symbol_counts: dict[str, int] = {}
+    kind_magmoms: dict[str, float] = {}
+
+    for atom, magmom in zip(atoms, magmoms, strict=True):
+        symbol = atom.symbol
+        moment = float(magmom)
+        key = (symbol, moment)
+        if key not in kind_by_symbol_and_moment:
+            symbol_counts[symbol] = symbol_counts.get(symbol, 0) + 1
+            kind_index = symbol_counts[symbol]
+            kind_name = f"{symbol}{kind_index}"
+            kind_by_symbol_and_moment[key] = (kind_name, kind_index)
+            kind_magmoms[kind_name] = moment
+        else:
+            kind_name, _ = kind_by_symbol_and_moment[key]
+
+        structure.append_atom(
+            position=atom.position,
+            symbols=symbol,
+            name=kind_name,
+        )
+
+    calc_parameters = {}
+    if np.any(~np.isclose(magmoms, 0.0)):
+        for (symbol, moment), (kind_name, kind_index) in kind_by_symbol_and_moment.items():
+            calc_parameters[f"atom_magmom_{kind_name}"] = {
+                "element": symbol,
+                "id": _atom_id(symbol, kind_index),
+                "bmu": moment,
+            }
+        calc_parameters["comp"] = {"jspins": 2}
+
+    return structure, calc_parameters, kind_magmoms
+
+
 def numpy_to_python(value: Union[np.ndarray, float]) -> Union[List, float]:
     """
     Converts numpy arrays or scalars to native Python types.
@@ -103,8 +176,8 @@ def convert_ase_to_spg(
     lattice = atoms.get_cell()[:]
     numbers = atoms.get_atomic_numbers()
 
-    # Check for magnetic moment presence
-    if check_magmoms_ase(atoms):
+    # Preserve magnetic moments whenever the ASE array is present, even if all values are zero.
+    if has_initial_magmoms_ase(atoms):
         magmoms = atoms.get_initial_magnetic_moments()
         cell = (lattice, scaled_positions, numbers, magmoms)
     else:
@@ -233,7 +306,7 @@ def ase_to_prim(atoms: Atoms) -> Atoms:
     struct_prim = spg_get_primitive(struct_raw)
 
     # Create atoms object with magnetic moments if present
-    if check_magmoms_ase(atoms):
+    if has_initial_magmoms_ase(atoms):
         new_atoms = Atoms(
             cell=struct_prim[0],
             scaled_positions=struct_prim[1],
@@ -287,7 +360,7 @@ def ase_to_std(atoms: Atoms) -> Atoms:
     struct_prim = spg_get_std(struct_raw)
 
     # Create atoms object with magnetic moments if present
-    if check_magmoms_ase(atoms):
+    if has_initial_magmoms_ase(atoms):
         new_atoms = Atoms(
             cell=struct_prim[0],
             scaled_positions=struct_prim[1],
@@ -332,7 +405,7 @@ def ase_to_struct_prim(atoms: Atoms) -> Tuple[StructureData, Dict[int, Tuple]]:
     # It expects to get primitive cell as input
     ase_prim = ase_to_prim(atoms)
 
-    if check_magmoms_ase(atoms):
+    if has_initial_magmoms_ase(atoms):
         cell_raw = convert_ase_to_spg(atoms)
         # Expects tuple of length 5 and dict
         # (lattice, scaled_positions, numbers, kinds, magmoms), mapper

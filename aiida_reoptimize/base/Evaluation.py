@@ -12,7 +12,12 @@ from aiida.engine import ToContext, WorkChain
 from aiida.orm import Dict, List, StructureData, load_code, load_node
 from aiida.plugins import DataFactory
 
-from aiida_reoptimize.structure.dynamic_structure import StructureCalculator
+from aiida_reoptimize.structure.dynamic_structure import (
+    ParameterVectorMismatchError,
+    StructureCalculator,
+    StructureStandardizationError,
+)
+from aiida_reoptimize.structure.magmoms_utils import MagneticMomentPreservationError
 
 
 class BuilderFactory(Protocol):
@@ -214,6 +219,22 @@ class _StaticEvalStructureBase(WorkChain):
             help="List of evaluation results for each target",
         )
 
+        spec.exit_code(
+            410,
+            "ERROR_INVALID_PARAMETER_VECTOR",
+            message="Target parameter vector is incompatible with the structure Bravais lattice.",
+        )
+        spec.exit_code(
+            411,
+            "ERROR_STRUCTURE_STANDARDIZATION_FAILED",
+            message="Generated structure could not be standardized with spglib.",
+        )
+        spec.exit_code(
+            412,
+            "ERROR_MAGNETIC_MOMENT_PRESERVATION_FAILED",
+            message="Generated structure magnetic moments could not be preserved.",
+        )
+
     def _targets(self) -> list[Any]:
         """Return structure perturbation targets as a Python list."""
 
@@ -333,8 +354,18 @@ class StaticEvalLatticeProblem(_StaticEvalStructureBase):
             structure_keyword=tuple(self.inputs.structure_keyword.get_list()),
         )
 
-        for x in targets:
-            builder = structure_calculator.get_builder(x)
+        for index, x in enumerate(targets):
+            try:
+                builder = structure_calculator.get_builder(x)
+            except ParameterVectorMismatchError as exc:
+                self.report(f"Invalid lattice parameter vector at target {index}: {exc}")
+                return self.exit_codes.ERROR_INVALID_PARAMETER_VECTOR
+            except StructureStandardizationError as exc:
+                self.report(f"Could not standardize generated structure at target {index}: {exc}")
+                return self.exit_codes.ERROR_STRUCTURE_STANDARDIZATION_FAILED
+            except MagneticMomentPreservationError as exc:
+                self.report(f"Could not preserve magnetic moments at target {index}: {exc}")
+                return self.exit_codes.ERROR_MAGNETIC_MOMENT_PRESERVATION_FAILED
             self.ctx.builders.append(builder)
 
     def evaluate(self):

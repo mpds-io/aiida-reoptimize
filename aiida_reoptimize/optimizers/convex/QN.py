@@ -65,6 +65,8 @@ class BFGSOptimizer(_GDBase):
                 List(trial_targets),
                 calculator_parameters=self.ctx.calculator_parameters,
             )
+            if raw_trial_results is None:
+                return self.exit_codes.ERROR_EVALUATOR_FAILED
             extracted_trial_results = self.extractor(raw_trial_results["evaluation_results"])
             exit_code = ensure_population_has_valid_results(
                 self,

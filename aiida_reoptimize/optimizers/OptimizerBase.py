@@ -1,6 +1,6 @@
 from typing import Callable, Type
 
-from aiida.engine import WorkChain, run
+from aiida.engine import WorkChain, run_get_node
 from aiida.orm import Bool, Dict, Float, Int, List, StructureData
 
 
@@ -44,6 +44,12 @@ class _OptimizerBase(WorkChain):
             valid_type=StructureData,
             required=False,
             help="Chemical structure for the optimization.",
+        )
+
+        spec.exit_code(
+            430,
+            "ERROR_EVALUATOR_FAILED",
+            message="Evaluator WorkChain failed before returning evaluation results.",
         )
 
         spec.outline(cls.initialize, cls.optimization_process, cls.finalize)
@@ -113,17 +119,38 @@ class _OptimizerBase(WorkChain):
                 (e.g. ``calculator_parameters``).
 
         Returns:
-            Dictionary of evaluator outputs including ``evaluation_results``.
+            Dictionary of evaluator outputs including ``evaluation_results``, or
+            ``None`` when the evaluator failed.
         """
         if self.inputs.get("structure"):
-            return run(
+            outputs, node = run_get_node(
                 self.evaluator_workchain,
                 targets=targets,
                 structure=self.inputs.structure,
                 **kwargs,
             )
         else:
-            return run(self.evaluator_workchain, targets=targets)
+            outputs, node = run_get_node(self.evaluator_workchain, targets=targets, **kwargs)
+
+        self.ctx.last_evaluator_node_pk = node.pk
+
+        if not node.is_finished_ok:
+            exit_status = node.exit_status
+            exit_message = node.exit_message or "No exit message was provided."
+            self.report(
+                f"Evaluator {self.evaluator_workchain.__name__} failed "
+                f"with exit status {exit_status} (pk={node.pk}): {exit_message}"
+            )
+            return None
+
+        if "evaluation_results" not in outputs:
+            self.report(
+                f"Evaluator {self.evaluator_workchain.__name__} finished without "
+                f"the required 'evaluation_results' output (pk={node.pk})."
+            )
+            return None
+
+        return outputs
 
     def check_itmax(self):
         """Check if the current iteration is within the maximum limit.

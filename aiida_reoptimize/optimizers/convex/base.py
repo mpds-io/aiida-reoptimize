@@ -4,6 +4,7 @@ import numpy as np
 from aiida.orm import Float, Int, List
 
 from ..OptimizerBase import _OptimizerBase
+from ..parameter_utils import prepare_optimization_parameters
 from ..result_utils import ensure_population_has_valid_results
 
 
@@ -41,26 +42,31 @@ class _GDBase(_OptimizerBase):
         """Initialize context variables and optimization parameters."""
         super().initialize()
 
-        self.ctx.parameters = np.array(
-            self.inputs["parameters"]["initial_parameters"],
-            dtype=np.float64,
+        parameters_dict = self.inputs.parameters.get_dict()
+        normalized = prepare_optimization_parameters(
+            parameters_dict,
+            structure=self.inputs.get("structure"),
+            require_bounds=False,
+            require_initial_parameters=True,
         )
+        self.ctx.parameters = normalized["initial_parameters"].copy()
 
-        self.ctx.calculator_parameters = self.inputs["parameters"].get("calculator_parameters", {})
+        self.ctx.calculator_parameters = parameters_dict.get("calculator_parameters", {})
 
-        self.ctx.tolerance = self.inputs["parameters"].get("algorithm_settings", {}).get("tolerance", 1e-3)
+        settings = parameters_dict.get("algorithm_settings", {})
+        self.ctx.tolerance = settings.get("tolerance", 1e-3)
         self.ctx.itmax = self.inputs.itmax.value
-        self.ctx.epsilon = self.inputs["parameters"].get("algorithm_settings", {}).get("epsilon", 1e-7)
-        self.ctx.delta = self.inputs["parameters"].get("algorithm_settings", {}).get("delta", 1e-6)
+        self.ctx.epsilon = settings.get("epsilon", 1e-7)
+        self.ctx.delta = settings.get("delta", 1e-6)
         self.ctx.converged = False
         self.ctx.iteration = 1
 
-        self.ctx.max_step = self.inputs["parameters"].get("algorithm_settings", {}).get("max_step", 0.1)
+        self.ctx.max_step = settings.get("max_step", 0.1)
 
     def initialize_step_control(self):
         """Initialize shared controls for step rollback and backoff."""
 
-        settings = self.inputs["parameters"].get("algorithm_settings", {})
+        settings = self.inputs.parameters.get_dict().get("algorithm_settings", {})
         self.ctx.prev_value = None
         self.ctx.prev_parameters = self.ctx.parameters.copy()
         self.ctx.stuck_counter = 0
@@ -185,6 +191,8 @@ class _GDBase(_OptimizerBase):
         while self.should_continue():
             targets = self.generate_targets()
             raw_results = self.run_evaluator(targets, calculator_parameters=self.ctx.calculator_parameters)
+            if raw_results is None:
+                return self.exit_codes.ERROR_EVALUATOR_FAILED
             self.ctx.raw_results = raw_results["evaluation_results"]
             self.ctx.results = self.extractor(self.ctx.raw_results)
             exit_code = ensure_population_has_valid_results(
