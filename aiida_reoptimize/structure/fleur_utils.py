@@ -48,7 +48,7 @@ class Fleur_setup:
 
             opts = ["-f", "fleur.inp", "-inc", "+all", "-noco"]
 
-            inpgen_path = os.environ.get("FLEUR_INPGEN_PATH")
+            inpgen_path = os.environ.get("FLEUR_INPGEN_PATH", "/data/inpgen")
             if not inpgen_path or not os.path.exists(inpgen_path):
                 raise FileNotFoundError("FLEUR_INPGEN_PATH is not set or does not exist")
 
@@ -85,9 +85,6 @@ def convert_xml_to_FleurInpData(xml_input: str):
     Returns:
         FleurinpData: The FleurinpData object created from the XML input.
     """
-
-    # !!! IF YOU WORK WITH MAGMOMS IT IS HIGHLY IMPORTANT TO MAKE SURE THAT
-    # !!! YOU ARE USING THIS ase-fleur LIBRARY git+https://github.com/blokhin/ase-fleur
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         xml_path = os.path.join(tmp_dir, "inp.xml")
