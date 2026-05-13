@@ -67,7 +67,9 @@ class FixedPyMOOAlgorithmMixin:
         spec.inputs["algorithm_name"].help = f"Fixed PyMOO algorithm name ({cls.fixed_algorithm_name})."
 
     def initialize(self):
-        super().initialize()
+        exit_code = super().initialize()
+        if exit_code is not None:
+            return exit_code
         self.ctx.algorithm_name = self.fixed_algorithm_name
 
 

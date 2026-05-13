@@ -11,7 +11,9 @@ class RMSpropOptimizer(_GDBase):
     """
 
     def initialize(self):
-        super().initialize()
+        exit_code = super().initialize()
+        if exit_code is not None:
+            return exit_code
         self.initialize_step_control()
         self.ctx.accumulated_grad_sq = np.zeros_like(self.ctx.parameters)
         self.ctx.learning_rate = self.inputs["parameters"].get("algorithm_settings", {}).get("learning_rate", 1e-3)
@@ -63,7 +65,9 @@ class AdamOptimizer(_GDBase):
     """
 
     def initialize(self):
-        super().initialize()
+        exit_code = super().initialize()
+        if exit_code is not None:
+            return exit_code
         self.initialize_step_control()
         self.ctx.m = np.zeros_like(self.ctx.parameters)
         self.ctx.v = np.zeros_like(self.ctx.parameters)
@@ -126,7 +130,9 @@ class ConjugateGradientOptimizer(_GDBase):
     """
 
     def initialize(self):
-        super().initialize()
+        exit_code = super().initialize()
+        if exit_code is not None:
+            return exit_code
         self.ctx.prev_gradient = np.zeros_like(self.ctx.parameters)
         self.ctx.direction = np.zeros_like(self.ctx.parameters)
         self.ctx.prev_value = None

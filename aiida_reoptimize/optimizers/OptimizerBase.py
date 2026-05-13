@@ -51,6 +51,11 @@ class _OptimizerBase(WorkChain):
             "ERROR_EVALUATOR_FAILED",
             message="Evaluator WorkChain failed before returning evaluation results.",
         )
+        spec.exit_code(
+            431,
+            "ERROR_INVALID_OPTIMIZATION_PARAMETERS",
+            message="Optimization parameters are incompatible with the optimizer or input structure.",
+        )
 
         spec.outline(cls.initialize, cls.optimization_process, cls.finalize)
 

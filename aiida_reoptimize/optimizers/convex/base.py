@@ -4,7 +4,7 @@ import numpy as np
 from aiida.orm import Float, Int, List
 
 from ..OptimizerBase import _OptimizerBase
-from ..parameter_utils import prepare_optimization_parameters
+from ..parameter_utils import OptimizationParameterError, prepare_optimization_parameters
 from ..result_utils import ensure_population_has_valid_results
 
 
@@ -43,12 +43,17 @@ class _GDBase(_OptimizerBase):
         super().initialize()
 
         parameters_dict = self.inputs.parameters.get_dict()
-        normalized = prepare_optimization_parameters(
-            parameters_dict,
-            structure=self.inputs.get("structure"),
-            require_bounds=False,
-            require_initial_parameters=True,
-        )
+        try:
+            normalized = prepare_optimization_parameters(
+                parameters_dict,
+                structure=self.inputs.get("structure"),
+                require_bounds=False,
+                require_initial_parameters=True,
+                reporter=self.report,
+            )
+        except OptimizationParameterError as exc:
+            self.report(f"Invalid optimization parameters: {exc}")
+            return self.exit_codes.ERROR_INVALID_OPTIMIZATION_PARAMETERS
         self.ctx.parameters = normalized["initial_parameters"].copy()
 
         self.ctx.calculator_parameters = parameters_dict.get("calculator_parameters", {})

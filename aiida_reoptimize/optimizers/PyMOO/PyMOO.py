@@ -8,7 +8,7 @@ from pymoo.core.problem import Problem
 from pymoo.problems.static import StaticProblem
 
 from aiida_reoptimize.optimizers.OptimizerBase import _OptimizerBase
-from aiida_reoptimize.optimizers.parameter_utils import prepare_optimization_parameters
+from aiida_reoptimize.optimizers.parameter_utils import OptimizationParameterError, prepare_optimization_parameters
 from aiida_reoptimize.optimizers.PyMOO.Builder import AlgorithmBuilder
 from aiida_reoptimize.optimizers.result_utils import ensure_population_has_valid_results
 
@@ -51,12 +51,17 @@ class _PyMOO_Base(_OptimizerBase):
         super().initialize()
 
         parameters_dict = self.inputs.parameters.get_dict()
-        normalized = prepare_optimization_parameters(
-            parameters_dict,
-            structure=self.inputs.get("structure"),
-            require_bounds=True,
-            require_initial_parameters=False,
-        )
+        try:
+            normalized = prepare_optimization_parameters(
+                parameters_dict,
+                structure=self.inputs.get("structure"),
+                require_bounds=True,
+                require_initial_parameters=False,
+                reporter=self.report,
+            )
+        except OptimizationParameterError as exc:
+            self.report(f"Invalid optimization parameters: {exc}")
+            return self.exit_codes.ERROR_INVALID_OPTIMIZATION_PARAMETERS
 
         self.ctx.iteration = 0
         self.ctx.max_iterations = self.inputs.itmax.value
