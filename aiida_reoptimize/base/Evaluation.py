@@ -221,22 +221,22 @@ class _StaticEvalStructureBase(WorkChain):
         )
 
         spec.exit_code(
-            410,
+            490,
             "ERROR_INVALID_PARAMETER_VECTOR",
             message="Target parameter vector is incompatible with the structure Bravais lattice.",
         )
         spec.exit_code(
-            411,
+            491,
             "ERROR_STRUCTURE_STANDARDIZATION_FAILED",
             message="Generated structure could not be standardized with spglib.",
         )
         spec.exit_code(
-            412,
+            492,
             "ERROR_MAGNETIC_MOMENT_PRESERVATION_FAILED",
             message="Generated structure magnetic moments could not be preserved.",
         )
         spec.exit_code(
-            413,
+            493,
             "ERROR_STRUCTURE_GENERATION_FAILED",
             message="Generated structure could not be assembled before calculator submission.",
         )

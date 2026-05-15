@@ -21,19 +21,19 @@ class _GDBase(_OptimizerBase):
         super().define(spec)
 
         spec.exit_code(
-            400,
+            496,
             "ERROR_MAX_ITERATIONS",
             message="Optimization did not converge within the maximum iterations.",  # noqa: E501
         )
 
         spec.exit_code(
-            401,
+            497,
             "ERROR_NO_VALID_SOLUTION",
             message="Optimization failed to find a valid solution.",
         )
 
         spec.exit_code(
-            402,
+            498,
             "ERROR_STUCK_FOR_TOO_LONG",
             message="Optimizer stuck: step rate reached minimum or too many consecutive worse objectives.",
         )
