@@ -15,6 +15,7 @@ from aiida.plugins import DataFactory
 from aiida_reoptimize.structure.dynamic_structure import (
     ParameterVectorMismatchError,
     StructureCalculator,
+    StructureGenerationError,
     StructureStandardizationError,
 )
 from aiida_reoptimize.structure.magmoms_utils import MagneticMomentPreservationError
@@ -220,19 +221,24 @@ class _StaticEvalStructureBase(WorkChain):
         )
 
         spec.exit_code(
-            410,
+            490,
             "ERROR_INVALID_PARAMETER_VECTOR",
             message="Target parameter vector is incompatible with the structure Bravais lattice.",
         )
         spec.exit_code(
-            411,
+            491,
             "ERROR_STRUCTURE_STANDARDIZATION_FAILED",
             message="Generated structure could not be standardized with spglib.",
         )
         spec.exit_code(
-            412,
+            492,
             "ERROR_MAGNETIC_MOMENT_PRESERVATION_FAILED",
             message="Generated structure magnetic moments could not be preserved.",
+        )
+        spec.exit_code(
+            493,
+            "ERROR_STRUCTURE_GENERATION_FAILED",
+            message="Generated structure could not be assembled before calculator submission.",
         )
 
     def _targets(self) -> list[Any]:
@@ -352,11 +358,17 @@ class StaticEvalLatticeProblem(_StaticEvalStructureBase):
             calculator=self.calculator_workchain,
             calculator_parameters=calculator_parameters,
             structure_keyword=tuple(self.inputs.structure_keyword.get_list()),
+            reporter=self.report,
+        )
+        self.report(
+            structure_calculator.format_diagnostics(
+                stage="structure_generation_setup",
+            )
         )
 
         for index, x in enumerate(targets):
             try:
-                builder = structure_calculator.get_builder(x)
+                builder = structure_calculator.get_builder(x, target_index=index)
             except ParameterVectorMismatchError as exc:
                 self.report(f"Invalid lattice parameter vector at target {index}: {exc}")
                 return self.exit_codes.ERROR_INVALID_PARAMETER_VECTOR
@@ -366,6 +378,9 @@ class StaticEvalLatticeProblem(_StaticEvalStructureBase):
             except MagneticMomentPreservationError as exc:
                 self.report(f"Could not preserve magnetic moments at target {index}: {exc}")
                 return self.exit_codes.ERROR_MAGNETIC_MOMENT_PRESERVATION_FAILED
+            except StructureGenerationError as exc:
+                self.report(f"Could not generate structure for target {index} before calculator submission: {exc}")
+                return self.exit_codes.ERROR_STRUCTURE_GENERATION_FAILED
             self.ctx.builders.append(builder)
 
     def evaluate(self):

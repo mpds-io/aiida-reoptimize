@@ -13,7 +13,9 @@ class BFGSOptimizer(_GDBase):
     """
 
     def initialize(self):
-        super().initialize()
+        exit_code = super().initialize()
+        if exit_code is not None:
+            return exit_code
         self.initialize_step_control()
         self.ctx.inv_hessian = np.eye(len(self.ctx.parameters))
         self.ctx.gradient_prev = None

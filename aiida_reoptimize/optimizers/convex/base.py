@@ -4,7 +4,7 @@ import numpy as np
 from aiida.orm import Float, Int, List
 
 from ..OptimizerBase import _OptimizerBase
-from ..parameter_utils import prepare_optimization_parameters
+from ..parameter_utils import OptimizationParameterError, prepare_optimization_parameters
 from ..result_utils import ensure_population_has_valid_results
 
 
@@ -21,19 +21,19 @@ class _GDBase(_OptimizerBase):
         super().define(spec)
 
         spec.exit_code(
-            400,
+            496,
             "ERROR_MAX_ITERATIONS",
             message="Optimization did not converge within the maximum iterations.",  # noqa: E501
         )
 
         spec.exit_code(
-            401,
+            497,
             "ERROR_NO_VALID_SOLUTION",
             message="Optimization failed to find a valid solution.",
         )
 
         spec.exit_code(
-            402,
+            498,
             "ERROR_STUCK_FOR_TOO_LONG",
             message="Optimizer stuck: step rate reached minimum or too many consecutive worse objectives.",
         )
@@ -43,12 +43,17 @@ class _GDBase(_OptimizerBase):
         super().initialize()
 
         parameters_dict = self.inputs.parameters.get_dict()
-        normalized = prepare_optimization_parameters(
-            parameters_dict,
-            structure=self.inputs.get("structure"),
-            require_bounds=False,
-            require_initial_parameters=True,
-        )
+        try:
+            normalized = prepare_optimization_parameters(
+                parameters_dict,
+                structure=self.inputs.get("structure"),
+                require_bounds=False,
+                require_initial_parameters=True,
+                reporter=self.report,
+            )
+        except OptimizationParameterError as exc:
+            self.report(f"Invalid optimization parameters: {exc}")
+            return self.exit_codes.ERROR_INVALID_OPTIMIZATION_PARAMETERS
         self.ctx.parameters = normalized["initial_parameters"].copy()
 
         self.ctx.calculator_parameters = parameters_dict.get("calculator_parameters", {})

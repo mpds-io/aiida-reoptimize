@@ -9,6 +9,7 @@ from aiida_reoptimize.structure.dynamic_structure import (
     DynamicStructure,
     ParameterVectorMismatchError,
     StructureCalculator,
+    StructureGenerationError,
     _merge_magnetic_calc_parameters,
 )
 from aiida_reoptimize.structure.magmoms_utils import (
@@ -96,6 +97,54 @@ class TestDynamicStructure(unittest.TestCase):
 
         with self.assertRaises(ParameterVectorMismatchError):
             dynamic_structure([1.0, 2.0])
+
+    def test_wrong_vector_length_error_includes_lattice_diagnostics(self):
+        dynamic_structure = DynamicStructure(self.atoms_for_lattice(ORC(1.0, 2.0, 3.0)))
+
+        with self.assertRaises(ParameterVectorMismatchError) as ctx:
+            dynamic_structure([1.0, 2.0, 3.0, 4.0])
+
+        message = str(ctx.exception)
+        self.assertIn("Parameter vector length mismatch", message)
+        self.assertIn("Structure generation diagnostics:", message)
+        self.assertIn("expected_parameter_names: ('a', 'b', 'c')", message)
+        self.assertIn("candidate_length: 4", message)
+        self.assertIn("extra_value_count: 1", message)
+        self.assertIn("<extra_3>=4.0", message)
+
+    def test_structure_calculator_reports_target_index_on_vector_mismatch(self):
+        reports = []
+        structure_calculator = StructureCalculator(
+            structure=self.atoms_for_lattice(ORC(1.0, 2.0, 3.0)),
+            calculator=CalculatorWithCalcParameters,
+            calculator_parameters={},
+            reporter=reports.append,
+        )
+
+        with self.assertRaises(ParameterVectorMismatchError):
+            structure_calculator.get_builder([1.0, 2.0, 3.0, 4.0], target_index=7)
+
+        self.assertEqual(len(reports), 1)
+        self.assertIn("Structure calculator diagnostics:", reports[0])
+        self.assertIn("target_index: 7", reports[0])
+        self.assertIn("calculator_workchain:", reports[0])
+        self.assertIn("extra_value_count: 1", reports[0])
+
+    def test_structure_input_path_error_includes_diagnostics(self):
+        structure_calculator = StructureCalculator(
+            structure=self.atoms_for_lattice(ORC(1.0, 2.0, 3.0)),
+            calculator=CalculatorWithCalcParameters,
+            calculator_parameters={},
+            structure_keyword=("missing", "structure"),
+        )
+
+        with self.assertRaises(StructureGenerationError) as ctx:
+            structure_calculator.get_builder([2.0, 2.0, 3.0], target_index=2)
+
+        message = str(ctx.exception)
+        self.assertIn("Cannot find 'missing' in structure input path", message)
+        self.assertIn("stage: 'structure_input_injection'", message)
+        self.assertIn("target_index: 2", message)
 
     def test_ase_initial_magmoms_survive_dynamic_structure_generation(self):
         reference = Atoms(
