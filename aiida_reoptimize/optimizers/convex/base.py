@@ -195,7 +195,10 @@ class _GDBase(_OptimizerBase):
         """Main optimization loop for SDG based algorithms."""
         while self.should_continue():
             targets = self.generate_targets()
-            raw_results = self.run_evaluator(targets, calculator_parameters=self.ctx.calculator_parameters)
+            if self.ctx.calculator_parameters:
+                raw_results = self.run_evaluator(targets, calculator_parameters=self.ctx.calculator_parameters)
+            else:
+                raw_results = self.run_evaluator(targets)
             if raw_results is None:
                 return self.exit_codes.ERROR_EVALUATOR_FAILED
             self.ctx.raw_results = raw_results["evaluation_results"]

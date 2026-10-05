@@ -6,6 +6,7 @@ from ._common import (
     BFGSOptimizer,
     ConjugateGradientOptimizer,
     FixedPyMOOAlgorithmMixin,
+    LBFGSOptimizer,
     PyMOO_Optimizer,
     RMSpropOptimizer,
     StaticOptimizerBinding,
@@ -33,6 +34,10 @@ class RMSpropFleurSCFOptimizer(BaseFleurSCFOptimizer, RMSpropOptimizer):
 
 class BFGSFleurSCFOptimizer(BaseFleurSCFOptimizer, BFGSOptimizer):
     """BFGS optimizer registered for FLEUR SCF lattice optimization."""
+
+
+class LBFGSFleurSCFOptimizer(BaseFleurSCFOptimizer, LBFGSOptimizer):
+    """L-BFGS optimizer registered for FLEUR SCF lattice optimization."""
 
 
 class PyMOOFleurSCFOptimizer(BaseFleurSCFOptimizer, PyMOO_Optimizer):

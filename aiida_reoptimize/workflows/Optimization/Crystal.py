@@ -6,6 +6,7 @@ from ._common import (
     BFGSOptimizer,
     ConjugateGradientOptimizer,
     FixedPyMOOAlgorithmMixin,
+    LBFGSOptimizer,
     PyMOO_Optimizer,
     RMSpropOptimizer,
     StaticOptimizerBinding,
@@ -33,6 +34,10 @@ class RMSpropCrystalOptimizer(BaseCrystalOptimizer, RMSpropOptimizer):
 
 class BFGSCrystalOptimizer(BaseCrystalOptimizer, BFGSOptimizer):
     """BFGS optimizer registered for CRYSTAL lattice optimization."""
+
+
+class LBFGSCrystalOptimizer(BaseCrystalOptimizer, LBFGSOptimizer):
+    """L-BFGS optimizer registered for CRYSTAL lattice optimization."""
 
 
 class PyMOOCrystalOptimizer(BaseCrystalOptimizer, PyMOO_Optimizer):

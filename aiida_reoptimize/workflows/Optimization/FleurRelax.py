@@ -6,6 +6,7 @@ from ._common import (
     BFGSOptimizer,
     ConjugateGradientOptimizer,
     FixedPyMOOAlgorithmMixin,
+    LBFGSOptimizer,
     PyMOO_Optimizer,
     RMSpropOptimizer,
     StaticOptimizerBinding,
@@ -33,6 +34,10 @@ class RMSpropFleurRelaxOptimizer(BaseFleurRelaxOptimizer, RMSpropOptimizer):
 
 class BFGSFleurRelaxOptimizer(BaseFleurRelaxOptimizer, BFGSOptimizer):
     """BFGS optimizer registered for FLEUR relax lattice optimization."""
+
+
+class LBFGSFleurRelaxOptimizer(BaseFleurRelaxOptimizer, LBFGSOptimizer):
+    """L-BFGS optimizer registered for FLEUR relax lattice optimization."""
 
 
 class PyMOOFleurRelaxOptimizer(BaseFleurRelaxOptimizer, PyMOO_Optimizer):

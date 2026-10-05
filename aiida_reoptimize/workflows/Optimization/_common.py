@@ -11,7 +11,7 @@ from ...optimizers.convex.GD import (
     ConjugateGradientOptimizer,
     RMSpropOptimizer,
 )
-from ...optimizers.convex.QN import BFGSOptimizer
+from ...optimizers.convex.QN import BFGSOptimizer, LBFGSOptimizer
 from ...optimizers.PyMOO.PyMOO import PyMOO_Optimizer
 
 
@@ -78,6 +78,7 @@ __all__ = [
     "BFGSOptimizer",
     "ConjugateGradientOptimizer",
     "FixedPyMOOAlgorithmMixin",
+    "LBFGSOptimizer",
     "PyMOO_Optimizer",
     "RMSpropOptimizer",
     "StaticOptimizerBinding",
