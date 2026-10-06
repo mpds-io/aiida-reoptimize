@@ -159,8 +159,14 @@ class LBFGSOptimizer(_GDBase):
 
     Noise handling:
         - the oracle standard deviation sigma_f is estimated from repeated
-          evaluations of the same point during line searches (exponentially
-          weighted moving average);
+          evaluations of the same point: one duplicated probe before the
+          first step, then one additional evaluation of every accepted line
+          search point (reusing the value the line search already computed),
+          accumulated as an exponentially weighted moving average so a
+          single unlucky probe cannot leave the noise level undetected;
+        - non-finite and penalty values are filtered out of the noise
+          estimate: a single poisoned evaluation must not corrupt the
+          acceptance threshold or the noise floor;
         - secant pairs whose curvature signal is comparable to the noise
           level are rejected, so noise cannot corrupt the Hessian
           approximation;
@@ -219,32 +225,107 @@ class LBFGSOptimizer(_GDBase):
             return exit_code
         return results
 
-    def _update_noise_estimate(self, target):
-        """Estimate the oracle standard deviation from a duplicated probe.
+    def _noise_allowance(self):
+        """Return the noise allowance for acceptance thresholds (0 when the
+        estimate is missing or unusable)."""
 
-        Evaluates the same target twice: the squared difference of the two
-        values is an unbiased estimate of 2*sigma_f^2. The estimate is
-        accumulated as an exponentially weighted moving average.
+        sigma = self.ctx.sigma_f
+        if sigma is None or not np.isfinite(sigma) or sigma <= 0:
+            return 0.0
+        return self.ctx.noise_allowance * sigma
 
-        Args:
-            target: Parameter vector to evaluate twice.
+    def _evaluate_probe(self, targets):
+        """Evaluate a batch of noise-probe targets without the
+        all-penalty abort.
+
+        Noise probes are auxiliary: a failed (penalty) evaluation simply
+        yields no sample rather than aborting the optimization. The main
+        loop keeps its stricter ``ensure_population_has_valid_results``
+        semantics for optimization targets.
 
         Returns:
-            Tuple ``(first_value, second_value)``, or ``None`` on failure.
+            List of extracted values (may contain penalties), or ``None``
+            on evaluator failure.
         """
 
-        results = self._evaluate_targets([target, target])
-        if hasattr(results, "status"):
+        if self.ctx.calculator_parameters:
+            raw_results = self.run_evaluator(
+                List(targets),
+                calculator_parameters=self.ctx.calculator_parameters,
+            )
+        else:
+            raw_results = self.run_evaluator(List(targets))
+        if raw_results is None:
             return None
-        f_first, f_second = results[0], results[1]
+        return self.extractor(raw_results["evaluation_results"])
+
+    def _fold_noise_sample(self, f_known, target):
+        """Refine the noise estimate from ONE extra evaluation of ``target``.
+
+        The line search has already evaluated ``target`` and produced
+        ``f_known``; a single additional evaluation of the same point is
+        enough for a duplicated-probe difference, so the refresh costs one
+        oracle run instead of two.
+
+        Non-finite values and extractor penalties are filtered out: a
+        single poisoned evaluation must not corrupt sigma_f (a NaN would
+        poison the Armijo allowance, a penalty value would inflate the
+        noise floor by orders of magnitude).
+
+        Args:
+            f_known: Value already evaluated at ``target``.
+            target: Parameter vector to re-evaluate once.
+
+        Returns:
+            The new sample pair when a valid estimate was folded in,
+            ``None`` otherwise (evaluation failure or filtered values).
+        """
+
+        results = self._evaluate_probe([target])
+        if results is None:
+            return None
+        f_again = results[0]
+        penalty = self.extractor.get_penalty()
+        for value in (f_known, f_again):
+            if not np.isfinite(value) or value == penalty:
+                return None
+        self._accumulate_noise_sample(f_known, f_again)
+        return f_known, f_again
+
+    def _accumulate_noise_sample(self, f_first, f_second):
+        """Fold a duplicated-probe difference into the EWMA noise estimate.
+
+        A single duplicated probe can underestimate the noise by orders
+        of magnitude (two nearly identical draws); continuous re-estimation
+        from every accepted step keeps sigma_f honest.
+        """
+
         sample_var = 0.5 * (f_first - f_second) ** 2
-        if self.ctx.sigma_f is None:
+        if self.ctx.sigma_f is None or not np.isfinite(self.ctx.sigma_f):
             self.ctx.sigma_f = np.sqrt(sample_var)
         else:
             alpha_ewma = self.ctx.noise_ewma
             old_var = self.ctx.sigma_f**2
             self.ctx.sigma_f = np.sqrt(alpha_ewma * old_var + (1.0 - alpha_ewma) * sample_var)
-        return f_first, f_second
+
+    def _seed_noise_estimate(self, target):
+        """Seed the noise estimate with a duplicated probe of ``target``.
+
+        Returns:
+            ``True`` when a valid estimate was folded in.
+        """
+
+        results = self._evaluate_probe([target, target])
+        if results is None:
+            return False
+        f_first, f_second = results[0], results[1]
+        penalty = self.extractor.get_penalty()
+        if not (np.isfinite(f_first) and np.isfinite(f_second)):
+            return False
+        if f_first == penalty or f_second == penalty:
+            return False
+        self._accumulate_noise_sample(f_first, f_second)
+        return True
 
     def _noise_floor(self, gradient):
         """Return the gradient-norm noise floor, or None when noiseless.
@@ -293,11 +374,23 @@ class LBFGSOptimizer(_GDBase):
         standard ``optimization_process`` loop, so no extra probes are
         spent inside the line search.
 
-        The first line search of the run evaluates its initial trial point
-        twice to seed the oracle noise estimate; the sufficient decrease
-        condition is then relaxed by ``noise_allowance * sigma_f``, so
-        oracle noise neither rejects good steps nor accepts bad ones
-        (Berahas, Byrd & Nocedal, 2016).
+        Returns the accepted step size, the accepted (clamped) point, and
+        the evaluated value at that point; the value is reused by the
+        caller for the noise refresh without a second evaluation.
+
+        Failed (penalty) trial evaluations are treated as an infinite
+        objective value: the Armijo condition rejects them and the search
+        backtracks, instead of aborting the whole run.
+
+        The sufficient decrease condition is relaxed by
+        ``noise_allowance * sigma_f`` (0 while the oracle appears
+        noiseless), so oracle noise neither rejects good steps nor
+        accepts bad ones (Berahas, Byrd & Nocedal, 2016).
+
+        Trial candidates are clamped BEFORE evaluation: the accepted point
+        is always the exact point that satisfied the Armijo condition.
+        Clamping after acceptance would move the optimizer to an
+        unevaluated point and break the guaranteed descent.
 
         On the first step the initial step length is scaled to the gradient
         norm (Nocedal & Wright, eq. 7.20 alternative initialization): with a
@@ -312,27 +405,38 @@ class LBFGSOptimizer(_GDBase):
         else:
             alpha = self.ctx.alpha_init
         gTd = np.dot(gradient, direction)
-        allowance = self.ctx.noise_allowance * (self.ctx.sigma_f or 0.0)
+        allowance = self._noise_allowance()
+        penalty = self.extractor.get_penalty()
         best = None
         for _ in range(self.ctx.max_linesearch_iter):
             trial = params + alpha * direction
-            results = self._evaluate_targets([trial.tolist()])
-            if hasattr(results, "status"):
-                return None, None
+            trial = self.clamp_parameters(trial, params)
+            results = self._evaluate_probe([trial.tolist()])
+            if results is None:
+                return None, None, None
             f_trial = results[0]
+            if f_trial == penalty or not np.isfinite(f_trial):
+                alpha *= 0.5
+                if alpha < self.ctx.alpha_min:
+                    break
+                continue
             if f_trial <= value + self.ctx.c1 * alpha * gTd + allowance:
-                best = (alpha, trial)
+                best = (alpha, trial, f_trial)
                 break
             alpha *= 0.5
             if alpha < self.ctx.alpha_min:
                 break
         if best is None:
-            return None, None
+            return None, None, None
         return best
 
     def clamp_parameters(self, trial, previous):
-        """Clamp the parameter update component-wise and roll back to the
-        previous point when clamping would break the accepted step.
+        """Clamp a candidate point component-wise to stay within
+        ``max_step`` of the previous point.
+
+        Called from the line search on every candidate BEFORE evaluation,
+        so the accepted point is always the exact evaluated point and the
+        Armijo guarantee applies to the realized move.
         """
 
         if not self.ctx.max_step:
@@ -354,7 +458,7 @@ class LBFGSOptimizer(_GDBase):
             True when the optimization should stop due to stagnation.
         """
 
-        allowance = self.ctx.noise_allowance * (self.ctx.sigma_f or 0.0)
+        allowance = self._noise_allowance()
         if self.ctx.best_value is None or value < self.ctx.best_value - allowance:
             self.ctx.best_value = value
             self.ctx.stall_count = 0
@@ -374,13 +478,14 @@ class LBFGSOptimizer(_GDBase):
             self.ctx.converged = True
             return
 
-        if not self.ctx.s_list:
-            seeded = self._update_noise_estimate(self.ctx.parameters.tolist())
-            if seeded is not None:
+        if self.ctx.sigma_f is None:
+            if self._seed_noise_estimate(self.ctx.parameters.tolist()):
                 self.report(f"Estimated oracle noise sigma_f = {self.ctx.sigma_f:.3e}")
+            else:
+                self.report("Noise seeding probe failed; assuming a noiseless oracle.")
 
         direction = self._two_loop(gradient)
-        alpha, trial = self._linesearch(
+        alpha, trial, f_trial = self._linesearch(
             self.ctx.parameters,
             self.ctx.results[0],
             gradient,
@@ -391,6 +496,9 @@ class LBFGSOptimizer(_GDBase):
             self.report("Line search failed to find an acceptable step size.")
             self.ctx.converged = True
             return
+
+        if self._fold_noise_sample(f_trial, trial.tolist()):
+            self.report(f"Oracle noise estimate sigma_f = {self.ctx.sigma_f:.3e}")
 
         step = alpha * direction
 
@@ -426,5 +534,5 @@ class LBFGSOptimizer(_GDBase):
 
         self.ctx.parameters_prev = self.ctx.parameters.copy()
         self.ctx.gradient_prev = gradient.copy()
-        self.ctx.parameters = self.clamp_parameters(trial, self.ctx.parameters)
+        self.ctx.parameters = trial
         self.ctx.iteration += 1
